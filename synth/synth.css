@@ -35,6 +35,22 @@ input {
   font: inherit;
 }
 
+.wire {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
+
+#wire-path {
+  fill: none;
+  stroke: #444;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
 .window {
   position: fixed;
   z-index: 1;

@@ -540,16 +540,52 @@
   });
 
   /* ------------------------------------------------------------------ *
-   * Windows
+   * Windows and wire
    * ------------------------------------------------------------------ */
 
   const rollWindow = $("#roll-window");
   const synthWindow = $("#synth-window");
+  const wirePath = $("#wire-path");
   let zTop = 1;
 
   function setPos(win, x, y) {
     win.style.left = `${Math.round(x)}px`;
     win.style.top = `${Math.round(y)}px`;
+  }
+
+  function updateWire() {
+    const a = rollWindow.getBoundingClientRect();
+    const b = synthWindow.getBoundingClientRect();
+    const ax = a.left + a.width / 2;
+    const ay = a.top + a.height / 2;
+    const bx = b.left + b.width / 2;
+    const by = b.top + b.height / 2;
+
+    if (Math.abs(bx - ax) >= Math.abs(by - ay)) {
+      const x1 = ax <= bx ? a.right : a.left;
+      const x2 = ax <= bx ? b.left : b.right;
+      const y1 = ay;
+      const y2 = by;
+      const dx = x2 - x1;
+      const sag = Math.min(50, Math.max(20, Math.abs(dx) * 0.25));
+
+      wirePath.setAttribute(
+        "d",
+        `M ${x1} ${y1} C ${x1 + dx * 0.4} ${y1 + sag}, ${x2 - dx * 0.4} ${y2 + sag}, ${x2} ${y2}`,
+      );
+    } else {
+      const y1 = ay <= by ? a.bottom : a.top;
+      const y2 = ay <= by ? b.top : b.bottom;
+      const x1 = ax;
+      const x2 = bx;
+      const dy = y2 - y1;
+      const sag = Math.min(50, Math.max(20, Math.abs(dy) * 0.25));
+
+      wirePath.setAttribute(
+        "d",
+        `M ${x1} ${y1} C ${x1 + sag} ${y1 + dy * 0.4}, ${x2 + sag} ${y2 - dy * 0.4}, ${x2} ${y2}`,
+      );
+    }
   }
 
   function initLayout() {
@@ -583,6 +619,7 @@
       );
     }
 
+    updateWire();
     rollWindow.classList.add("ready");
     synthWindow.classList.add("ready");
   }
@@ -618,6 +655,7 @@
       const y = Math.min(Math.max(0, event.clientY - drag.dy), maxY);
 
       setPos(win, x, y);
+      updateWire();
     });
 
     const end = (event) => {
@@ -639,5 +677,6 @@
   window.addEventListener("resize", () => {
     clampWindow(rollWindow);
     clampWindow(synthWindow);
+    updateWire();
   });
 })();
