@@ -9,32 +9,6 @@
     <link rel="stylesheet" href="synth.css" />
   </head>
   <body>
-    <svg class="wire" aria-hidden="true">
-      <path id="wire-path" d="" />
-    </svg>
-
-    <section class="window roll-window" id="roll-window" aria-label="Piano roll">
-      <header class="titlebar" data-drag>
-        <span>piano roll</span>
-        <span class="grip" aria-hidden="true">···</span>
-      </header>
-      <div class="roll">
-        <div class="transport">
-          <button class="play" id="play" type="button" aria-label="Play">▶</button>
-          <label class="bpm">bpm <input id="bpm" type="number" min="40" max="200" step="1" value="96" /></label>
-          <button class="clear" id="clear" type="button">clear</button>
-        </div>
-        <div class="roll-body">
-          <div class="keys" id="keys" aria-hidden="true"></div>
-          <div class="grid-scroll" id="grid-scroll">
-            <div class="grid" id="grid">
-              <div class="playhead" id="playhead"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
     <section class="window synth-window" id="synth-window" aria-label="Synth">
       <header class="titlebar" data-drag>
         <span>synth</span>
@@ -98,6 +72,8 @@
           <input id="level" type="range" min="0" max="100" step="1" value="70" />
           <output id="level-out" for="level">70%</output>
         </div>
+
+        <p class="hint">a–k play · z/x octave</p>
       </div>
     </section>
 
