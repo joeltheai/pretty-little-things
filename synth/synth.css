@@ -1,0 +1,153 @@
+:root {
+  color-scheme: dark;
+  --bg: #000;
+  --window: #0e0e0e;
+  --line: #262626;
+  --line-soft: #1c1c1c;
+  --text: #e6e6e6;
+  --dim: #6b6b6b;
+  --dimmer: #444;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+.window {
+  position: fixed;
+  z-index: 1;
+  background: var(--window);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  visibility: hidden;
+}
+
+.window.ready {
+  visibility: visible;
+}
+
+.titlebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 26px;
+  padding: 0 9px;
+  border-bottom: 1px solid var(--line-soft);
+  color: var(--dim);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: grab;
+  touch-action: none;
+}
+
+.titlebar:active {
+  cursor: grabbing;
+}
+
+.grip {
+  color: var(--dimmer);
+  font-size: 10px;
+  letter-spacing: 1px;
+}
+
+/* synth */
+
+.synth-window {
+  width: 270px;
+}
+
+.synth {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 10px;
+}
+
+.wave-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.wave-row .label {
+  width: 42px;
+  color: var(--dim);
+  font-size: 9px;
+}
+
+.waves {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2px;
+}
+
+.waves button {
+  padding: 4px 0;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--dim);
+  font-size: 9px;
+  cursor: pointer;
+}
+
+.waves button:hover {
+  color: var(--text);
+}
+
+.waves button[aria-pressed="true"] {
+  background: var(--text);
+  border-color: var(--text);
+  color: #000;
+}
+
+.control {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 34px;
+  align-items: center;
+  gap: 8px;
+}
+
+.control label {
+  color: var(--dim);
+  font-size: 9px;
+}
+
+.control output {
+  color: var(--dim);
+  font-size: 9px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+input[type="range"] {
+  width: 100%;
+  height: 14px;
+  margin: 0;
+  accent-color: var(--text);
+  cursor: pointer;
+}

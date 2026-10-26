@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#000000" />
+    <title>synth</title>
+    <link rel="icon" href="../favicon.svg" />
+    <link rel="stylesheet" href="synth.css" />
+  </head>
+  <body>
+    <section class="window synth-window" id="synth-window" aria-label="Synth">
+      <header class="titlebar" data-drag>
+        <span>synth</span>
+        <span class="grip" aria-hidden="true">···</span>
+      </header>
+      <div class="synth">
+        <div class="wave-row">
+          <span class="label">wave</span>
+          <div class="waves" role="group" aria-label="Waveform">
+            <button type="button" data-wave="sine" aria-pressed="false">sine</button>
+            <button type="button" data-wave="triangle" aria-pressed="false">tri</button>
+            <button type="button" data-wave="sawtooth" aria-pressed="true">saw</button>
+            <button type="button" data-wave="square" aria-pressed="false">square</button>
+          </div>
+        </div>
+
+        <div class="control">
+          <label for="voices">voices</label>
+          <input id="voices" type="range" min="1" max="4" step="1" value="3" />
+          <output id="voices-out" for="voices">3</output>
+        </div>
+
+        <div class="control">
+          <label for="detune">detune</label>
+          <input id="detune" type="range" min="0" max="50" step="1" value="12" />
+          <output id="detune-out" for="detune">12</output>
+        </div>
+
+        <div class="control">
+          <label for="attack">attack</label>
+          <input id="attack" type="range" min="0.005" max="1" step="0.005" value="0.01" />
+          <output id="attack-out" for="attack">0.01</output>
+        </div>
+
+        <div class="control">
+          <label for="decay">decay</label>
+          <input id="decay" type="range" min="0.01" max="1.5" step="0.01" value="0.25" />
+          <output id="decay-out" for="decay">0.25</output>
+        </div>
+
+        <div class="control">
+          <label for="sustain">sustain</label>
+          <input id="sustain" type="range" min="0" max="1" step="0.01" value="0.55" />
+          <output id="sustain-out" for="sustain">55%</output>
+        </div>
+
+        <div class="control">
+          <label for="release">release</label>
+          <input id="release" type="range" min="0.02" max="2" step="0.01" value="0.35" />
+          <output id="release-out" for="release">0.35</output>
+        </div>
+
+        <div class="control">
+          <label for="tone">tone</label>
+          <input id="tone" type="range" min="0" max="100" step="1" value="62" />
+          <output id="tone-out" for="tone">3.0k</output>
+        </div>
+
+        <div class="control">
+          <label for="level">level</label>
+          <input id="level" type="range" min="0" max="100" step="1" value="70" />
+          <output id="level-out" for="level">70%</output>
+        </div>
+      </div>
+    </section>
+
+    <script src="synth.js"></script>
+  </body>
+</html>
