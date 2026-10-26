@@ -405,7 +405,7 @@
 
     updateBars();
 
-    if (strum) {
+    if (strum && playing) {
       strumChord();
     }
   }
