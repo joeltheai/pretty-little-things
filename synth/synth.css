@@ -73,6 +73,228 @@ input {
   letter-spacing: 1px;
 }
 
+/* piano roll */
+
+.roll-window {
+  width: min(574px, calc(100vw - 24px));
+}
+
+.roll {
+  padding: 10px;
+}
+
+.transport {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.play {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--text);
+  font-size: 10px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.play:hover {
+  border-color: var(--dim);
+}
+
+.play.playing {
+  background: var(--text);
+  border-color: var(--text);
+  color: #000;
+}
+
+.bpm {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--dim);
+  font-size: 9px;
+}
+
+.bpm input {
+  width: 42px;
+  padding: 3px 2px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: #000;
+  color: var(--text);
+  font-size: 10px;
+  text-align: center;
+}
+
+.bpm input::-webkit-inner-spin-button,
+.bpm input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.bpm input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.clear {
+  margin-left: auto;
+  padding: 2px;
+  border: 0;
+  background: none;
+  color: var(--dim);
+  font-size: 9px;
+  cursor: pointer;
+}
+
+.clear:hover {
+  color: var(--text);
+}
+
+.roll-body {
+  display: flex;
+  align-items: flex-start;
+}
+
+.keys {
+  flex: none;
+  width: 40px;
+  height: 336px;
+  border-right: 1px solid #000;
+}
+
+.key {
+  height: 14px;
+  padding-right: 4px;
+  overflow: hidden;
+  font-size: 8px;
+  line-height: 14px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.key.white {
+  border-bottom: 1px solid #bdbdbd;
+  background: #cfcfcf;
+  color: #111;
+}
+
+.key.black {
+  border-bottom: 1px solid #000;
+  background: #161616;
+  color: #777;
+}
+
+.grid-scroll {
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+}
+
+.grid-scroll::-webkit-scrollbar {
+  height: 8px;
+}
+
+.grid-scroll::-webkit-scrollbar-thumb {
+  border-radius: 4px;
+  background: #2a2a2a;
+}
+
+.grid-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.grid {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(32, 16px);
+  grid-template-rows: repeat(24, 14px);
+  width: 512px;
+  height: 336px;
+  touch-action: pan-x;
+}
+
+.cell {
+  border-right: 1px solid #171717;
+  border-bottom: 1px solid #171717;
+}
+
+.cell.white {
+  background: #0e0e0e;
+}
+
+.cell.black {
+  background: #090909;
+}
+
+.cell.bar {
+  box-shadow: inset 1px 0 0 #2b2b2b;
+}
+
+.cell.octave {
+  box-shadow: inset 0 1px 0 #2b2b2b;
+}
+
+.cell.bar.octave {
+  box-shadow: inset 1px 0 0 #2b2b2b, inset 0 1px 0 #2b2b2b;
+}
+
+.playhead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 1;
+  display: none;
+  width: 16px;
+  border-left: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.05);
+  pointer-events: none;
+}
+
+.note {
+  position: absolute;
+  z-index: 2;
+  border-radius: 2px;
+  background: #e6e6e6;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18);
+  cursor: grab;
+  touch-action: none;
+}
+
+.note:hover {
+  background: #fff;
+}
+
+.note.dragging {
+  background: #fff;
+  cursor: grabbing;
+}
+
+.note::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 4px;
+  border-radius: 0 2px 2px 0;
+  background: rgba(0, 0, 0, 0.12);
+  cursor: ew-resize;
+}
+
+.note:hover::after {
+  background: rgba(0, 0, 0, 0.22);
+}
+
 /* synth */
 
 .synth-window {
