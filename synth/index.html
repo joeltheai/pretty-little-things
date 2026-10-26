@@ -9,6 +9,41 @@
     <link rel="stylesheet" href="synth.css" />
   </head>
   <body>
+    <svg class="wire" aria-hidden="true">
+      <path id="wire-path" d="" />
+    </svg>
+
+    <section class="window arp-window" id="arp-window" aria-label="Arpeggiator">
+      <header class="titlebar" data-drag>
+        <span>arpeggiator</span>
+        <span class="grip" aria-hidden="true">···</span>
+      </header>
+      <div class="arp">
+        <div class="pattern">
+          <button class="pattern-arrow" id="pattern-prev" type="button" aria-label="Previous pattern">‹</button>
+          <div class="pattern-stage" id="pattern-stage">
+            <div class="pattern-notes" id="pattern-notes"></div>
+            <div class="pattern-head" id="pattern-head"></div>
+          </div>
+          <button class="pattern-arrow" id="pattern-next" type="button" aria-label="Next pattern">›</button>
+        </div>
+
+        <div class="wheel-wrap">
+          <svg class="wheel" id="wheel" viewBox="0 0 320 320" role="group" aria-label="Chord wheel"></svg>
+          <button class="arp-play" id="arp-play" type="button" aria-label="Play">▶</button>
+        </div>
+
+        <div class="arp-footer">
+          <label class="tempo" for="tempo">
+            <span>tempo</span>
+            <input id="tempo" type="range" min="60" max="200" step="1" value="120" />
+            <output id="tempo-out" for="tempo">120</output>
+          </label>
+          <span class="pattern-count" id="pattern-count">1 / 5</span>
+        </div>
+      </div>
+    </section>
+
     <section class="window synth-window" id="synth-window" aria-label="Synth">
       <header class="titlebar" data-drag>
         <span>synth</span>
@@ -73,7 +108,7 @@
           <output id="level-out" for="level">70%</output>
         </div>
 
-        <p class="hint">a–k play · z/x octave</p>
+        <p class="hint">a–k play · space arp · z/x octave</p>
       </div>
     </section>
 
