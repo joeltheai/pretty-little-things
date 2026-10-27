@@ -306,6 +306,75 @@ svg {
   stroke-dasharray: 1 5;
   pointer-events: none;
 }
+.chord-sequence {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 8px;
+}
+.chord-sequence .icon-button {
+  width: 20px;
+  height: 19px;
+  font-size: 13px;
+}
+.chord-sequence .icon-button:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+#chord-capture svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1;
+}
+#chord-capture[aria-pressed="true"] circle {
+  fill: currentColor;
+}
+.chord-slots {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  flex: 1;
+}
+.chord-slots span {
+  display: grid;
+  place-items: center;
+  height: 17px;
+  border: 1px solid #202020;
+  border-radius: 2px;
+  color: #444;
+  font-size: 8px;
+}
+.chord-slots span.filled {
+  border-color: #555;
+  color: #aaa;
+}
+.chord-slots span.active {
+  border-color: #eee;
+  color: black;
+  background: #ddd;
+}
+#chord-markers {
+  pointer-events: none;
+}
+#chord-markers circle {
+  fill: #050505;
+  stroke: #ccc;
+  stroke-width: 1;
+}
+#chord-markers text {
+  fill: #eee;
+  font-size: 9px;
+  font-weight: 500;
+}
+#chord-markers .active circle {
+  fill: #eee;
+  stroke: white;
+}
+#chord-markers .active text {
+  fill: #000;
+}
 .chord-options {
   display: flex;
   gap: 7px;

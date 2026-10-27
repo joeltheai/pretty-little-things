@@ -63,6 +63,56 @@
               <strong id="chord-name">C</strong>
             </button>
           </div>
+          <div
+            class="chord-sequence"
+            role="group"
+            aria-label="Four-chord progression"
+          >
+            <button
+              id="chord-capture"
+              class="icon-button"
+              type="button"
+              aria-label="Capture four chords"
+              aria-pressed="false"
+              title="Capture four chords: click four wheel segments"
+            >
+              <svg viewBox="0 0 16 16" aria-hidden="true">
+                <circle cx="8" cy="8" r="3.5" />
+              </svg>
+            </button>
+            <div
+              id="chord-slots"
+              class="chord-slots"
+              role="list"
+              aria-label="Four bars in 4/4"
+            >
+              <span data-slot="0" role="listitem">1</span
+              ><span data-slot="1" role="listitem">2</span
+              ><span data-slot="2" role="listitem">3</span
+              ><span data-slot="3" role="listitem">4</span>
+            </div>
+            <button
+              id="chord-loop"
+              class="icon-button"
+              type="button"
+              aria-label="Loop four chords"
+              aria-pressed="false"
+              title="Loop four chords, one per 4/4 bar"
+              disabled
+            >
+              ↻
+            </button>
+            <button
+              id="chord-clear"
+              class="icon-button"
+              type="button"
+              aria-label="Clear chord progression"
+              title="Clear chord progression"
+              disabled
+            >
+              ×
+            </button>
+          </div>
           <div class="chord-options">
             <select
               id="extension"

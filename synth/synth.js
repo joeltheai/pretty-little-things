@@ -207,6 +207,14 @@
   const scheduledSteps = [];
   const heldKeys = new Map();
   let lastVisual = null;
+  const progression = {
+    chords: [],
+    capturing: false,
+    enabled: false,
+    index: -1,
+  };
+  let nextChordBar = 0,
+    auditionSerial = 0;
 
   // Audio starts only after a gesture. All sequencer events share the audio clock.
   async function audio() {
@@ -897,16 +905,142 @@
   $("#wheel").append(
     svg("circle", { cx: 160, cy: 160, r: 48, class: "wheel-guide" }),
   );
-  function updateChord(audition = false) {
-    let intervals = [0, chordMinor ? 3 : 4, 7];
+  const chordMarkers = svg("g", { id: "chord-markers", "aria-hidden": true });
+  $("#wheel").append(chordMarkers);
+  function chordConfig() {
+    return {
+      root: chordRoot,
+      minor: chordMinor,
+      extension: $("#extension").value,
+      inversion: Number($("#voicing").value),
+    };
+  }
+  function buildChordNotes(config) {
+    let intervals = [0, config.minor ? 3 : 4, 7];
+    if (config.extension === "seventh") intervals.push(config.minor ? 10 : 11);
+    if (config.extension === "ninth") intervals.push(14);
+    if (config.extension === "sus") intervals = [0, 5, 7];
+    const notes = intervals.map((n) => 48 + config.root + n);
+    for (let i = 0; i < config.inversion; i++) notes.push(notes.shift() + 12);
+    return notes.sort((a, b) => a - b);
+  }
+  function renderProgression() {
+    $("#chord-capture").setAttribute(
+      "aria-pressed",
+      String(progression.capturing),
+    );
+    $("#chord-capture").title = progression.capturing
+      ? `Choose chord ${progression.chords.length + 1} of 4; click to cancel`
+      : "Capture four chords: click four wheel segments";
+    $("#chord-loop").disabled = progression.chords.length !== 4;
+    $("#chord-loop").setAttribute("aria-pressed", String(progression.enabled));
+    $("#chord-clear").disabled =
+      !progression.chords.length && !progression.capturing;
+    $$("#chord-slots span").forEach((slot, i) => {
+      const entry = progression.chords[i],
+        active = playing && progression.enabled && progression.index === i;
+      slot.classList.toggle("filled", Boolean(entry));
+      slot.classList.toggle("active", active);
+      slot.title = entry
+        ? `Bar ${i + 1}: ${entry.label}`
+        : `Bar ${i + 1}: empty`;
+      slot.setAttribute("aria-label", slot.title);
+      if (active) slot.setAttribute("aria-current", "step");
+      else slot.removeAttribute("aria-current");
+    });
+    chordMarkers.replaceChildren();
+    progression.chords.forEach((entry, index) => {
+      const matching = progression.chords
+        .map((other, i) =>
+          other.root === entry.root && other.minor === entry.minor ? i : -1,
+        )
+        .filter((i) => i >= 0);
+      const order = (entry.minor ? minors : majors).indexOf(entry.root);
+      const angle =
+        -Math.PI / 2 +
+        (order * Math.PI) / 6 +
+        (matching.indexOf(index) - (matching.length - 1) / 2) * 0.13;
+      const radius = entry.minor ? 98 : 143;
+      const marker = svg("g", {
+        "data-chord-marker": index + 1,
+        transform: `translate(${160 + Math.cos(angle) * radius} ${160 + Math.sin(angle) * radius})`,
+        class:
+          playing && progression.enabled && progression.index === index
+            ? "active"
+            : "",
+      });
+      const label = svg("text", { x: 0, y: 0 });
+      label.textContent = index + 1;
+      marker.append(
+        svg("circle", { r: entry.minor && matching.length > 2 ? 6 : 7.5 }),
+        label,
+      );
+      chordMarkers.append(marker);
+    });
+  }
+  function progressionIndexAt(when) {
+    return (
+      Math.floor((Math.max(0, ((when - anchor) * bpm) / 60) + 1e-7) / 4) % 4
+    );
+  }
+  function applyProgressionChord(index) {
+    if (progression.index === index) return;
+    const entry = progression.chords[index];
+    progression.index = index;
+    chordRoot = entry.root;
+    chordMinor = entry.minor;
+    $("#extension").value = entry.extension;
+    $("#voicing").value = entry.inversion;
+    updateChord(false, true);
+    renderProgression();
+  }
+  function updateProgression(now) {
+    if (playing && progression.enabled && progression.chords.length === 4)
+      applyProgressionChord(progressionIndexAt(now));
+  }
+  function finishCapture() {
+    progression.capturing = false;
+    progression.enabled = true;
+    progression.index = -1;
+    auditionSerial++;
+    silence("audition");
+    renderProgression();
+    if (playing) restart();
+    else start();
+  }
+  $("#chord-capture").addEventListener("click", () => {
+    if (progression.capturing) {
+      progression.capturing = false;
+      renderProgression();
+      return;
+    }
+    progression.chords = [];
+    progression.capturing = true;
+    progression.enabled = false;
+    progression.index = -1;
+    renderProgression();
+    if (playing) restart();
+  });
+  $("#chord-loop").addEventListener("click", () => {
+    if (progression.chords.length !== 4) return;
+    progression.enabled = !progression.enabled;
+    progression.capturing = false;
+    progression.index = -1;
+    renderProgression();
+    if (playing) restart();
+    else if (progression.enabled) start();
+  });
+  $("#chord-clear").addEventListener("click", () => {
+    progression.chords = [];
+    progression.capturing = false;
+    progression.enabled = false;
+    progression.index = -1;
+    renderProgression();
+    if (playing) restart();
+  });
+  function updateChord(audition = false, syncOnly = false) {
     const extension = $("#extension").value;
-    if (extension === "seventh") intervals.push(chordMinor ? 10 : 11);
-    if (extension === "ninth") intervals.push(14);
-    if (extension === "sus") intervals = [0, 5, 7];
-    chordNotes = intervals.map((n) => 48 + chordRoot + n);
-    for (let i = 0; i < Number($("#voicing").value); i++)
-      chordNotes.push(chordNotes.shift() + 12);
-    chordNotes.sort((a, b) => a - b);
+    chordNotes = buildChordNotes(chordConfig());
     $("#chord-name").textContent =
       noteNames[chordRoot] +
       (extension === "seventh"
@@ -933,16 +1067,37 @@
         selected,
       );
     });
-    if (playing && bypass) holdChord();
-    else if (playing && retrigger) restart();
+    if (!syncOnly) {
+      if (playing && bypass) holdChord();
+      else if (playing && retrigger) restart();
+    }
     if (audition && !playing) auditionChord();
   }
   function chooseChord(e) {
-    const p = e.target.closest("[data-root]");
-    if (!p) return;
-    chordRoot = Number(p.dataset.root);
-    chordMinor = Boolean(Number(p.dataset.minor));
-    updateChord(true);
+    const path = e.target.closest("[data-root]");
+    if (!path) return;
+    const stoppedLoop = progression.enabled;
+    const completesCapture =
+      progression.capturing && progression.chords.length === 3;
+    if (stoppedLoop) {
+      progression.enabled = false;
+      progression.index = -1;
+    }
+    chordRoot = Number(path.dataset.root);
+    chordMinor = Boolean(Number(path.dataset.minor));
+    updateChord(!completesCapture, stoppedLoop || completesCapture);
+    if (progression.capturing) {
+      progression.chords.push({
+        ...chordConfig(),
+        notes: [...chordNotes],
+        label: $("#chord-name").textContent,
+      });
+      if (progression.chords.length === 4) finishCapture();
+      else renderProgression();
+    } else {
+      renderProgression();
+      if (stoppedLoop && playing) restart();
+    }
   }
   $("#wheel").addEventListener("click", chooseChord);
   $("#wheel").addEventListener("keydown", (e) => {
@@ -952,10 +1107,19 @@
     }
   });
   ["voicing", "extension"].forEach((id) =>
-    $(`#${id}`).addEventListener("change", () => updateChord()),
+    $(`#${id}`).addEventListener("change", () => {
+      if (progression.enabled) {
+        progression.enabled = false;
+        progression.index = -1;
+        updateChord(false, true);
+        renderProgression();
+        if (playing) restart();
+      } else updateChord();
+    }),
   );
   async function auditionChord() {
-    if (!(await audio())) return;
+    const request = ++auditionSerial;
+    if (!(await audio()) || request !== auditionSerial) return;
     silence("audition");
     chordNotes.forEach((m) =>
       playNote(m, ctx.currentTime + 0.01, 0.65, 0.65, "audition"),
@@ -1326,30 +1490,47 @@
   function stepTime(step) {
     return anchor + ((step + (step % 2 ? swing : 0)) * rate * 60) / bpm;
   }
-  function degreeNote(degree) {
+  function degreeNote(degree, notes = chordNotes) {
     const index = Math.max(0, degree - 1);
-    return (
-      chordNotes[index % chordNotes.length] +
-      12 * Math.floor(index / chordNotes.length)
-    );
+    return notes[index % notes.length] + 12 * Math.floor(index / notes.length);
   }
   function schedule() {
-    if (!playing || bypass || !ctx) return;
+    if (!playing || !ctx) return;
     const now = ctx.currentTime;
-    if (stepTime(nextStep) < now - 0.2) {
-      anchor = now + 0.02;
-      nextStep = 0;
+    const looping = progression.enabled && progression.chords.length === 4;
+    if (bypass) {
+      if (!looping) return;
+      const barDuration = (4 * 60) / bpm;
+      if (anchor + nextChordBar * barDuration < now - 0.2)
+        nextChordBar = Math.max(0, Math.floor((now - anchor) / barDuration));
+      while (anchor + nextChordBar * barDuration < now + 0.09) {
+        const bar = nextChordBar++,
+          when = Math.max(now, anchor + bar * barDuration);
+        const duration = anchor + (bar + 1) * barDuration - when;
+        progression.chords[bar % 4].notes.forEach((midi) =>
+          playNote(midi, when, duration, 0.65),
+        );
+      }
+      return;
     }
+    // Skip missed events after a delayed timer without resetting the bar clock.
+    if (stepTime(nextStep) < now - 0.2)
+      nextStep = Math.max(0, Math.ceil((now - anchor) / ((rate * 60) / bpm)));
     while (stepTime(nextStep) < now + 0.09) {
       const when = stepTime(nextStep),
-        step = nextStep++;
+        clockStep = nextStep++;
+      const step =
+        looping && retrigger ? clockStep % Math.round(4 / rate) : clockStep;
+      const notes = looping
+        ? progression.chords[progressionIndexAt(when)].notes
+        : chordNotes;
       const note = laneValue(lanes[0], step),
         gate = laneValue(lanes[1], step),
         velocity = laneValue(lanes[2], step),
         oct = laneValue(lanes[3], step);
-      const duration = ((stepTime(step + 1) - when) * gate) / 100;
+      const duration = ((stepTime(clockStep + 1) - when) * gate) / 100;
       if (note && gate && velocity) {
-        const midi = clamp(degreeNote(note) + oct * 12, 0, 127);
+        const midi = clamp(degreeNote(note, notes) + oct * 12, 0, 127);
         playNote(midi, when, duration, velocity / 100);
         scheduledSteps.push({ when, step, midi });
       } else scheduledSteps.push({ when, step, midi: null });
@@ -1377,6 +1558,9 @@
   }
   function stop() {
     generation++;
+    auditionSerial++;
+    progression.index = -1;
+    renderProgression();
     starting = false;
     playing = false;
     clearInterval(timer);
@@ -1394,10 +1578,13 @@
     silence("arp");
     scheduledSteps.length = 0;
     nextStep = 0;
+    nextChordBar = 0;
+    progression.index = -1;
     liveStep = -1;
     updatePlayheads();
     anchor = ctx.currentTime + 0.035;
-    if (bypass) holdChord();
+    if (progression.enabled) applyProgressionChord(0);
+    if (bypass && !progression.enabled) holdChord();
     else schedule();
   }
   function updateTransport() {
@@ -1932,6 +2119,7 @@
     lastFrame = timestamp;
     if (motion) fieldTime += delta;
     const now = ctx?.currentTime || 0;
+    updateProgression(now);
     let current;
     while (scheduledSteps.length && scheduledSteps[0].when <= now)
       current = scheduledSteps.shift();
@@ -2018,6 +2206,7 @@
   $("#arp-panel").classList.toggle("bypassed", bypass);
   syncControls.forEach((sync) => sync());
   updateChord();
+  renderProgression();
   updateTransport();
   window.addEventListener("resize", resize);
   resize();
