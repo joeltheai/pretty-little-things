@@ -56,8 +56,6 @@
     swing = 0,
     anchor = 0,
     nextStep = 0;
-  let counterRatio = null,
-    nextCounterStep = 0;
   let motion = !matchMedia("(prefers-reduced-motion: reduce)").matches;
   const activeVoices = new Set();
   const visualNotes = [];
@@ -251,19 +249,6 @@
   }
 
   // Knobs retain native range inputs for keyboard and assistive technology.
-  const controlDescriptions = {
-    voices: "unison → petal count",
-    detune: "detune → petals open and spread",
-    morph: "wavetable → petal curvature",
-    sub: "sub oscillator → stem height",
-    attack: "attack → how slowly the flower opens",
-    decay: "decay → bloom settling time",
-    sustain: "sustain → the size of the held bloom",
-    release: "release → how slowly petals close",
-    tone: "cutoff → leaf opening",
-    resonance: "resonance → ripples around the flowers",
-    level: "level → the brightness of the garden",
-  };
   const definitions = {
     voices: [1, 7, 1, "unison", (v) => String(v)],
     detune: [0, 60, 1, "detune", (v) => `${v}ct`],
@@ -312,9 +297,10 @@
     const [min, max, step, label, format] = definitions[id];
     const box = document.createElement("div");
     box.className = envelope ? "env-control" : "knob";
+    box.title = label;
     const input = `<input id="${id}" type="range" min="${min}" max="${max}" step="${step}" value="${state[id]}" aria-label="${label}"/>`;
     if (envelope)
-      box.innerHTML = `<div class="env-label"><label for="${id}">${label}</label><output id="${id}-out">${format(state[id])}</output></div>${input}`;
+      box.innerHTML = `<div class="env-label"><label for="${id}">${label[0].toUpperCase()}</label><output id="${id}-out">${format(state[id])}</output></div>${input}`;
     else
       box.innerHTML = `<div class="knob-face">${input}<svg viewBox="0 0 48 48" aria-hidden="true"><path class="knob-track" d="${arc(-135, 135)}"/><path class="knob-arc"/><circle class="knob-body" cx="24" cy="24" r="16"/><g class="knob-pointer"><path d="M24 19V11"/></g></svg></div><label for="${id}">${label}</label><output id="${id}-out">${format(state[id])}</output>`;
     $(target).append(box);
@@ -322,6 +308,8 @@
     const sync = () => {
       state[id] = Number(range.value);
       $(`#${id}-out`).textContent = format(state[id]);
+      range.setAttribute("aria-valuetext", format(state[id]));
+      box.title = `${label}: ${format(state[id])}`;
       if (!envelope) {
         const angle = -135 + ((state[id] - min) / (max - min)) * 270;
         box
@@ -371,12 +359,6 @@
         );
     };
     range.addEventListener("input", sync);
-    box.addEventListener("pointerenter", () => {
-      $("#visual-description").textContent = controlDescriptions[id];
-    });
-    box.addEventListener("focusin", () => {
-      $("#visual-description").textContent = controlDescriptions[id];
-    });
     if (!envelope) {
       const face = box.querySelector(".knob-face");
       knobs.set(id, sync);
@@ -449,9 +431,6 @@
           "stroke-width": 0.7,
         }),
       );
-    $("#morph-caption").textContent = state.morph;
-    $("#wave-name").textContent =
-      `${state.wave === "sawtooth" ? "saw" : state.wave} / sine`;
   }
   $("#wave-grid").append(
     svg("path", {
@@ -531,7 +510,6 @@
     $("#envelope").setPointerCapture(e.pointerId);
     e.preventDefault();
     handle.focus();
-    $("#visual-description").textContent = controlDescriptions[id];
   });
   $("#envelope").addEventListener("pointermove", (e) => {
     if (!envDrag) return;
@@ -672,15 +650,6 @@
             : chordMinor
               ? "m"
               : "");
-    $("#chord-quality").textContent =
-      extension === "sus" ? "suspended" : chordMinor ? "minor" : "major";
-    $("#chord-notes").replaceChildren(
-      ...chordNotes.map((midi) => {
-        const span = document.createElement("span");
-        span.textContent = noteName(midi);
-        return span;
-      }),
-    );
     $$("#wheel path[data-root]").forEach((p) => {
       const selected =
         Number(p.dataset.root) === chordRoot &&
@@ -721,7 +690,7 @@
   }
   $("#audition").addEventListener("click", auditionChord);
 
-  // Independently sized and clock-divided lanes make the combined pattern evolve.
+  // A single graph is visible; each tab retains its own data, length and clock.
   const laneSpecs = [
     {
       id: "note",
@@ -741,7 +710,7 @@
     },
     {
       id: "velocity",
-      name: "velocity",
+      name: "vel",
       min: 10,
       max: 100,
       values: [90, 50, 68, 44, 78, 55, 65],
@@ -749,19 +718,11 @@
     },
     {
       id: "octave",
-      name: "octave",
+      name: "oct",
       min: -2,
       max: 2,
       values: [0, 0, 1, 0],
       length: 4,
-    },
-    {
-      id: "harmony",
-      name: "harmony",
-      min: 0,
-      max: 7,
-      values: [0, 0, 0, 2, 0, 0, 0, 4],
-      length: 8,
     },
   ];
   const lanes = laneSpecs.map((spec) => ({
@@ -773,50 +734,127 @@
     ),
     mutes: Array(16).fill(false),
     cells: [],
+    muteButtons: [],
   }));
   let selectedLane = "note",
-    linked = false;
-  function selectLane(id) {
-    selectedLane = id;
-    $$(".lane").forEach((el) =>
-      el.classList.toggle("selected", el.dataset.lane === id),
+    linked = false,
+    liveStep = -1;
+  const activeLane = () => lanes.find((lane) => lane.id === selectedLane);
+
+  function updateLaneControls() {
+    const lane = activeLane();
+    $("#lane-length").value = lane.length;
+    $("#lane-length").setAttribute("aria-label", `${lane.name} lane length`);
+    $("#lane-length-out").textContent = lane.length;
+    $("#lane-division").value = lane.division;
+    $("#lane-division").setAttribute(
+      "aria-label",
+      `${lane.name} clock division`,
     );
   }
-  function renderLane(lane) {
-    lane.cells.forEach((cell, i) => {
-      cell.classList.toggle("inactive", i >= lane.length);
-      cell.classList.toggle("muted", lane.mutes[i]);
-      cell.querySelector(".bar").style.height =
-        `${((lane.values[i] - lane.min) / (lane.max - lane.min)) * 80 + 10}%`;
-      cell.querySelector(".step-value").textContent = lane.mutes[i]
-        ? "·"
-        : lane.id === "gate" || lane.id === "velocity"
-          ? ""
-          : lane.values[i];
-      cell.setAttribute(
-        "aria-label",
-        `${lane.name} step ${i + 1}, ${lane.mutes[i] ? "muted" : lane.values[i]}${i >= lane.length ? ", outside loop" : ""}`,
+  function updatePlayheads() {
+    lanes.forEach((lane) => {
+      const index =
+        playing && !bypass && liveStep >= 0 ? laneIndex(lane, liveStep) : -1;
+      lane.cells.forEach((cell, i) =>
+        cell.classList.toggle("active", i === index),
       );
-      cell.setAttribute("aria-valuenow", lane.values[i]);
-      cell.setAttribute(
-        "aria-valuetext",
-        lane.mutes[i] ? "muted" : String(lane.values[i]),
+      lane.muteButtons.forEach((cell, i) =>
+        cell.classList.toggle("active", i === index),
       );
     });
-    $(`#length-${lane.id}`).value = lane.length;
-    $(`#division-${lane.id}`).value = lane.division;
-    $("#cycle-label").textContent = lanes.map((l) => l.length).join(" : ");
+  }
+  function selectLane(id) {
+    selectedLane = id;
+    $$(".lane").forEach((el) => {
+      el.hidden = el.dataset.lane !== id;
+    });
+    $$(".lane-tab").forEach((tab) => {
+      const selected = tab.dataset.lane === id;
+      tab.setAttribute("aria-selected", String(selected));
+      tab.tabIndex = selected ? 0 : -1;
+    });
+    updateLaneControls();
+    updatePlayheads();
+  }
+  function renderLane(lane) {
+    const steps = $(`#lane-${lane.id} .steps`);
+    steps.style.gridTemplateColumns = `repeat(${lane.length}, minmax(0, 1fr))`;
+    lane.cells.forEach((cell, i) => {
+      const value = lane.values[i];
+      cell.hidden = i >= lane.length;
+      cell.classList.toggle("muted", lane.mutes[i]);
+      const bar = cell.querySelector(".bar");
+      cell.style.setProperty(
+        "--value",
+        `${((value - lane.min) / (lane.max - lane.min)) * 82 + 5}%`,
+      );
+      if (lane.id === "octave") {
+        bar.style.bottom = "50%";
+        bar.style.height = `${(Math.abs(value) / 2) * 44}%`;
+        bar.style.transform = value < 0 ? "translateY(100%)" : "none";
+      } else
+        bar.style.height = `${((value - lane.min) / (lane.max - lane.min)) * 86 + 4}%`;
+      cell.querySelector(".step-value").textContent = lane.mutes[i]
+        ? "·"
+        : lane.id === "octave" && !value
+          ? ""
+          : value;
+      const text = `${lane.name} step ${i + 1}: ${lane.mutes[i] ? "muted" : value}`;
+      cell.setAttribute("aria-label", text);
+      cell.setAttribute("aria-valuenow", value);
+      cell.setAttribute(
+        "aria-valuetext",
+        lane.mutes[i] ? "muted" : String(value),
+      );
+      cell.title = text;
+      if (lane.muteButtons[i]) {
+        const mute = lane.muteButtons[i];
+        mute.hidden = i >= lane.length;
+        mute.setAttribute("aria-pressed", String(lane.mutes[i]));
+      }
+    });
+    if (lane.muteButtons.length)
+      $(`#lane-${lane.id} .step-mutes`).style.gridTemplateColumns =
+        `repeat(${lane.length}, minmax(0, 1fr))`;
+    if (selectedLane === lane.id) updateLaneControls();
+    updatePlayheads();
   }
   lanes.forEach((lane) => {
+    const tab = document.createElement("button");
+    tab.type = "button";
+    tab.className = "lane-tab";
+    tab.dataset.lane = lane.id;
+    tab.id = `tab-${lane.id}`;
+    tab.setAttribute("role", "tab");
+    tab.setAttribute("aria-controls", `lane-${lane.id}`);
+    tab.textContent = lane.name;
+    tab.addEventListener("click", () => selectLane(lane.id));
+    tab.addEventListener("keydown", (e) => {
+      if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) return;
+      e.preventDefault();
+      const index = lanes.indexOf(lane);
+      const next =
+        e.key === "Home"
+          ? 0
+          : e.key === "End"
+            ? lanes.length - 1
+            : (index + (e.key === "ArrowRight" ? 1 : -1) + lanes.length) %
+              lanes.length;
+      selectLane(lanes[next].id);
+      $(`#tab-${lanes[next].id}`).focus();
+    });
+    $("#lane-tabs").append(tab);
     const el = document.createElement("div");
     el.className = "lane";
     el.dataset.lane = lane.id;
-    el.innerHTML = `<div class="lane-heading"><button type="button" class="lane-select">${lane.name}</button><div class="lane-options"><label for="length-${lane.id}">steps</label><input id="length-${lane.id}" type="number" min="1" max="16" value="${lane.length}" aria-label="${lane.name} lane length"/><label for="division-${lane.id}">clk</label><select id="division-${lane.id}" aria-label="${lane.name} clock division"><option value="1">÷1</option><option value="2">÷2</option><option value="3">÷3</option><option value="4">÷4</option></select></div></div><div class="steps"></div>`;
+    el.id = `lane-${lane.id}`;
+    el.setAttribute("role", "tabpanel");
+    el.setAttribute("aria-labelledby", tab.id);
+    el.innerHTML =
+      '<div class="steps"></div>' +
+      (lane.id === "note" ? '<div class="step-mutes"></div>' : "");
     $("#lanes").append(el);
-    el.querySelector(".lane-select").addEventListener("click", () =>
-      selectLane(lane.id),
-    );
-    let drag;
     const steps = el.querySelector(".steps");
     for (let i = 0; i < 16; i++) {
       const cell = document.createElement("button");
@@ -865,13 +903,28 @@
           markCustom();
         }
       });
+      if (lane.id === "note") {
+        const mute = document.createElement("button");
+        mute.type = "button";
+        mute.className = "mute-step";
+        mute.setAttribute("aria-label", `Mute note step ${i + 1}`);
+        mute.title = `Mute step ${i + 1}`;
+        mute.addEventListener("click", () => {
+          lane.mutes[i] = !lane.mutes[i];
+          renderLane(lane);
+          markCustom();
+        });
+        el.querySelector(".step-mutes").append(mute);
+        lane.muteButtons.push(mute);
+      }
     }
+    let drawing = false;
     function paint(e) {
       const rect = steps.getBoundingClientRect();
       const i = clamp(
-        Math.floor(((e.clientX - rect.left) / rect.width) * 16),
+        Math.floor(((e.clientX - rect.left) / rect.width) * lane.length),
         0,
-        15,
+        lane.length - 1,
       );
       lane.values[i] = clamp(
         Math.round(
@@ -887,62 +940,42 @@
       markCustom();
     }
     steps.addEventListener("pointerdown", (e) => {
-      const cell = e.target.closest(".step");
-      if (!cell || e.button !== 0) return;
-      selectLane(lane.id);
-      cell.focus();
+      if (e.button !== 0 || !e.target.closest(".step")) return;
       e.preventDefault();
+      e.target.closest(".step").focus();
       steps.setPointerCapture(e.pointerId);
-      drag = {
-        x: e.clientX,
-        y: e.clientY,
-        index: Number(cell.dataset.index),
-        moved: false,
-      };
-      if (lane.id !== "note") {
-        paint(e);
-        drag.moved = true;
-      }
+      drawing = true;
+      paint(e);
     });
     steps.addEventListener("pointermove", (e) => {
-      if (!drag) return;
-      if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) > 3)
-        drag.moved = true;
-      if (drag.moved) paint(e);
+      if (drawing) paint(e);
     });
-    steps.addEventListener("pointerup", () => {
-      if (drag && !drag.moved) {
-        lane.mutes[drag.index] = !lane.mutes[drag.index];
-        renderLane(lane);
-        markCustom();
-      }
-      drag = null;
-    });
-    ["pointercancel", "lostpointercapture"].forEach((t) =>
-      steps.addEventListener(t, () => {
-        drag = null;
+    ["pointerup", "pointercancel", "lostpointercapture"].forEach((type) =>
+      steps.addEventListener(type, () => {
+        drawing = false;
       }),
     );
-    $(`#length-${lane.id}`).addEventListener("change", (e) => {
-      const length = clamp(Math.round(Number(e.target.value) || 1), 1, 16);
-      (linked ? lanes : [lane]).forEach((l) => {
-        l.length = length;
-        renderLane(l);
-      });
-      markCustom();
-    });
-    $(`#division-${lane.id}`).addEventListener("change", (e) => {
-      lane.division = Number(e.target.value);
-      markCustom();
-    });
     renderLane(lane);
   });
   selectLane("note");
+  $("#lane-length").addEventListener("input", (e) => {
+    const length = clamp(Math.round(Number(e.target.value)), 1, 16);
+    (linked ? lanes : [activeLane()]).forEach((lane) => {
+      lane.length = length;
+      renderLane(lane);
+    });
+    markCustom();
+  });
+  $("#lane-division").addEventListener("change", (e) => {
+    activeLane().division = Number(e.target.value);
+    updatePlayheads();
+    markCustom();
+  });
   function markCustom() {
     if (!$("#pattern option[value=custom]")) {
       const option = document.createElement("option");
       option.value = "custom";
-      option.textContent = "your own weather";
+      option.textContent = "custom";
       $("#pattern").append(option);
     }
     $("#pattern").value = "custom";
@@ -957,18 +990,17 @@
   $("#link-lengths").addEventListener("click", () => {
     linked = !linked;
     $("#link-lengths").setAttribute("aria-pressed", String(linked));
-    $("#link-lengths").textContent = `${linked ? "●" : "○"} link lengths`;
     if (linked) {
-      const length = lanes.find((l) => l.id === selectedLane).length;
-      lanes.forEach((l) => {
-        l.length = length;
-        renderLane(l);
+      const length = activeLane().length;
+      lanes.forEach((lane) => {
+        lane.length = length;
+        renderLane(lane);
       });
       markCustom();
     }
   });
   $("#randomize").addEventListener("click", () => {
-    const lane = lanes.find((l) => l.id === selectedLane);
+    const lane = activeLane();
     lane.values = lane.values.map(() =>
       Math.round(lane.min + Math.random() * (lane.max - lane.min)),
     );
@@ -979,15 +1011,15 @@
   $("#pattern").addEventListener("change", (e) => {
     const name = e.target.value;
     if (name === "custom") return;
-    const patterns = {
-      bloom: [8, 5, 7, 4, 8],
-      up: [8, 8, 8, 8, 8],
-      down: [8, 8, 8, 8, 8],
-      drift: [5, 8, 7, 3, 8],
-      rain: [12, 5, 9, 4, 7],
+    const lengths = {
+      bloom: [8, 5, 7, 4],
+      up: [8, 8, 8, 8],
+      down: [8, 8, 8, 8],
+      drift: [5, 8, 7, 3],
+      rain: [12, 5, 9, 4],
     };
     lanes.forEach((lane, j) => {
-      lane.length = patterns[name][j];
+      lane.length = lengths[name][j];
       lane.division = 1;
       lane.mutes.fill(false);
       lane.values = Array.from({ length: 16 }, (_, i) => {
@@ -995,7 +1027,7 @@
           return name === "down"
             ? 8 - (i % 8)
             : name === "rain"
-              ? 1 + ((i * 7 + 3) % 8)
+              ? 1 + Math.floor(Math.random() * 8)
               : name === "bloom"
                 ? laneSpecs[0].values[i % 8]
                 : (i % 8) + 1;
@@ -1003,21 +1035,17 @@
           return name === "up" || name === "down"
             ? 0
             : laneSpecs[3].values[i % 4];
-        if (lane.id === "harmony")
-          return name === "rain" && i % 4 === 0
-            ? 2
-            : name === "bloom"
-              ? laneSpecs[4].values[i % 8]
-              : 0;
         return laneSpecs[j].values[i % laneSpecs[j].values.length];
       });
       renderLane(lane);
     });
-    if (linked)
-      lanes.forEach((l) => {
-        l.length = lanes[0].length;
-        renderLane(l);
+    if (linked) {
+      const length = lanes[0].length;
+      lanes.forEach((lane) => {
+        lane.length = length;
+        renderLane(lane);
       });
+    }
     if (playing) restart();
   });
 
@@ -1037,7 +1065,6 @@
     if (stepTime(nextStep) < now - 0.2) {
       anchor = now + 0.02;
       nextStep = 0;
-      nextCounterStep = 0;
     }
     while (stepTime(nextStep) < now + 0.09) {
       const when = stepTime(nextStep),
@@ -1045,45 +1072,16 @@
       const note = laneValue(lanes[0], step),
         gate = laneValue(lanes[1], step),
         velocity = laneValue(lanes[2], step),
-        oct = laneValue(lanes[3], step),
-        harmony = laneValue(lanes[4], step);
+        oct = laneValue(lanes[3], step);
       const duration = ((stepTime(step + 1) - when) * gate) / 100;
       if (note && gate && velocity) {
         const midi = clamp(degreeNote(note) + oct * 12, 0, 127);
         playNote(midi, when, duration, velocity / 100);
-        if (harmony)
-          playNote(
-            clamp(midi + harmony, 0, 127),
-            when,
-            duration,
-            (velocity / 100) * 0.65,
-          );
         scheduledSteps.push({ when, step, midi });
       } else scheduledSteps.push({ when, step, midi: null });
     }
-    // A separate clock places counter-rhythm notes between master steps.
-    if (counterRatio) {
-      const interval =
-        (((rate * 60) / bpm) * counterRatio[1]) / counterRatio[0];
-      while (anchor + nextCounterStep * interval < now + 0.09) {
-        const step = nextCounterStep++;
-        const when = anchor + step * interval;
-        const note = laneValue(lanes[0], step);
-        const gate = laneValue(lanes[1], step);
-        const velocity = laneValue(lanes[2], step);
-        const octave = laneValue(lanes[3], step);
-        if (note && gate && velocity) {
-          const midi = clamp(degreeNote(note + 1) + octave * 12, 0, 127);
-          playNote(
-            midi,
-            when,
-            (interval * gate) / 100,
-            (velocity / 100) * 0.65,
-          );
-        }
-      }
-    }
   }
+
   function holdChord() {
     silence("arp");
     chordNotes.forEach((m) =>
@@ -1113,7 +1111,8 @@
     heldKeys.clear();
     scheduledSteps.length = 0;
     lanes.forEach((l) => l.cells.forEach((c) => c.classList.remove("active")));
-    $("#current-note").textContent = "waiting for rain";
+    liveStep = -1;
+    updatePlayheads();
     updateTransport();
   }
   function restart() {
@@ -1121,21 +1120,20 @@
     silence("arp");
     scheduledSteps.length = 0;
     nextStep = 0;
-    nextCounterStep = 0;
+    liveStep = -1;
+    updatePlayheads();
     anchor = ctx.currentTime + 0.035;
     if (bypass) holdChord();
     else schedule();
   }
   function updateTransport() {
     $("#play").setAttribute("aria-pressed", String(playing));
-    $("#play").setAttribute(
-      "aria-label",
-      playing ? "Stop garden" : "Play garden",
+    $("#play").setAttribute("aria-label", playing ? "Stop" : "Play");
+    $("#play-icon").setAttribute(
+      "d",
+      playing ? "M5 5H15V15H5Z" : "M6 4L15 10L6 16Z",
     );
-    $("#play-icon").textContent = playing ? "□" : "▷";
-    $("#play-label").textContent = playing ? "stop" : "play";
-    $("#transport-status").textContent = playing ? "in bloom" : "at rest";
-    $("#status-dot").classList.toggle("playing", playing);
+    $("#play").title = playing ? "Stop (Space)" : "Play (Space)";
   }
   $("#play").addEventListener("click", () =>
     playing || starting ? stop() : start(),
@@ -1146,23 +1144,19 @@
     $("#arp-panel").classList.toggle("bypassed", bypass);
     if (playing) restart();
   });
-  $("#tempo").addEventListener("change", (e) => {
+  $("#tempo").addEventListener("input", (e) => {
     bpm = clamp(Math.round(Number(e.target.value) || 112), 40, 240);
     e.target.value = bpm;
+    $("#tempo-out").textContent = bpm;
     if (playing) restart();
   });
   $("#rate").addEventListener("change", (e) => {
     rate = Number(e.target.value);
     if (playing) restart();
   });
-  $("#counter-rhythm").addEventListener("change", (e) => {
-    counterRatio =
-      e.target.value === "off" ? null : e.target.value.split(":").map(Number);
-    if (playing) restart();
-  });
   $("#swing").addEventListener("input", (e) => {
     swing = Number(e.target.value);
-    $("#swing-out").textContent = `${Math.round(swing * 100)}%`;
+    $("#swing").title = `Swing: ${Math.round(swing * 100)}%`;
     if (playing) restart();
   });
 
@@ -1252,11 +1246,16 @@
     });
   }
   $$(".panel").forEach((panel) => {
-    const bar = panel.querySelector("[data-drag]");
+    const bar = panel;
     let drag;
     let offset = { x: 0, y: 0 };
     bar.addEventListener("pointerdown", (e) => {
-      if (e.button !== 0 || innerWidth < 671) return;
+      if (
+        e.button !== 0 ||
+        innerWidth < 631 ||
+        (e.target !== panel && !e.target.classList.contains("panel-content"))
+      )
+        return;
       e.preventDefault();
       const rect = panel.getBoundingClientRect();
       drag = { x: e.clientX, y: e.clientY, ox: offset.x, oy: offset.y, rect };
@@ -1330,7 +1329,7 @@
   function setMotion(value) {
     motion = value;
     $("#motion").setAttribute("aria-pressed", String(motion));
-    $("#motion").textContent = `motion ${motion ? "on" : "off"}`;
+    $("#motion").title = motion ? "Pause animation" : "Enable animation";
     if (!motion) drops.length = 0;
   }
   $("#motion").addEventListener("click", () => setMotion(!motion));
@@ -1467,15 +1466,8 @@
     while (scheduledSteps.length && scheduledSteps[0].when <= now)
       current = scheduledSteps.shift();
     if (current) {
-      lanes.forEach((l) =>
-        l.cells.forEach((cell, i) =>
-          cell.classList.toggle("active", i === laneIndex(l, current.step)),
-        ),
-      );
-      $("#current-note").textContent =
-        current.midi === null
-          ? "a little silence"
-          : `${noteName(current.midi)} / step ${(current.step % 16) + 1}`;
+      liveStep = current.step;
+      updatePlayheads();
     }
     visualNotes.forEach((n) => {
       if (!n.born && n.voice.t <= now) {
@@ -1538,8 +1530,6 @@
       envCursor.setAttribute("cy", 96 - envelopeAt(voice, now) * 82);
       envCursor.setAttribute("opacity", 0.9);
     } else envCursor.setAttribute("opacity", 0);
-    $("#voice-status").textContent =
-      `${[...activeVoices].filter((v) => v.t <= now && now < v.off + v.r).reduce((n, v) => n + v.oscs.length, 0)} voices`;
     ["chord", "synth"].forEach((id, i) => {
       const circle = $(`#${id}-pulse`),
         path = $(`#${id === "chord" ? "chord" : "synth"}-wire`);
