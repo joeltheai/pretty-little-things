@@ -523,7 +523,7 @@
   let nextEventTime = 0;
   let anchorTime = 0;
 
-  function selectChord(key, strum) {
+  function selectChord(key) {
     chord = CHORDS[key];
 
     wheel.querySelectorAll("path[data-chord]").forEach((path) => {
@@ -531,19 +531,6 @@
     });
 
     updateBars();
-
-    if (strum && playing) {
-      strumChord();
-    }
-  }
-
-  async function strumChord() {
-    await ensureRunning();
-
-    const when = ctx.currentTime + 0.02;
-    [0, 1, 2, 3].forEach((degree, index) => {
-      playNote(chord[degree], when + index * 0.05, 0.5);
-    });
   }
 
   function renderPattern() {
@@ -717,7 +704,7 @@
     const slice = event.target.closest("path[data-chord]");
     if (!slice) return;
 
-    selectChord(slice.getAttribute("data-chord"), true);
+    selectChord(slice.getAttribute("data-chord"));
   });
 
   $("#pattern-prev").addEventListener("click", (event) => {
@@ -927,7 +914,7 @@
 
   buildWheel();
   renderPattern();
-  selectChord("major:C", false);
+  selectChord("major:C");
 
   makeDraggable(arpWindow);
   makeDraggable(synthWindow);
