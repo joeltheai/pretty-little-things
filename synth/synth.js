@@ -1303,9 +1303,11 @@
   const resizeObserver = new ResizeObserver(updateWires);
   $$(".panel").forEach((p) => resizeObserver.observe(p));
 
-  // Line-drawn flowers: every motion is driven by notes or a sound parameter.
+  // Flowers and grass share the ground; rain has its own viewport-sized layer.
   const canvas = $("#garden"),
     garden = canvas.getContext("2d"),
+    rainCanvas = $("#rain"),
+    rain = rainCanvas.getContext("2d"),
     scope = $("#scope"),
     scopeCtx = scope.getContext("2d");
   let width = 0,
@@ -1314,16 +1316,47 @@
     scopeWidth = 0,
     scopeHeight = 0;
   const flowerPositions = [0.045, 0.16, 0.32, 0.51, 0.69, 0.85, 0.96];
-  const drops = [];
+  const flowerEnergy = flowerPositions.map(() => 0);
+  const flowerPulses = flowerPositions.map(() => 0);
+  const drops = [],
+    grass = [];
   let lastFrame = 0,
-    fieldTime = 0;
+    fieldTime = 0,
+    fieldEnergy = 0;
+  let rainActivity = 0,
+    storm = 0,
+    rainAmount = 0;
+  const smooth = (current, target, delta, speed) =>
+    current + (target - current) * (1 - Math.exp(-delta * speed));
+  const seed = (n) => {
+    const value = Math.sin(n * 127.1 + 311.7) * 43758.5453;
+    return value - Math.floor(value);
+  };
+
   function resize() {
+    const previousWidth = width || innerWidth,
+      previousHeight = height || innerHeight;
     width = innerWidth;
     height = innerHeight;
     dpr = Math.min(devicePixelRatio || 1, 2);
-    canvas.width = width * dpr;
-    canvas.height = height * dpr;
+    [canvas, rainCanvas].forEach((layer) => {
+      layer.width = Math.round(width * dpr);
+      layer.height = Math.round(height * dpr);
+    });
     garden.setTransform(dpr, 0, 0, dpr, 0, 0);
+    rain.setTransform(dpr, 0, 0, dpr, 0, 0);
+    drops.forEach((drop) => {
+      drop.x *= width / previousWidth;
+      drop.y *= height / previousHeight;
+    });
+    grass.length = 0;
+    const tufts = Math.min(180, Math.ceil(width / 9));
+    for (let i = 0; i < tufts; i++)
+      grass.push({
+        x: ((i + seed(i)) / tufts) * width,
+        size: seed(i + 31),
+        phase: seed(i + 73) * Math.PI * 2,
+      });
     const rect = scope.getBoundingClientRect();
     scopeWidth = rect.width;
     scopeHeight = rect.height;
@@ -1336,7 +1369,16 @@
     motion = value;
     $("#motion").setAttribute("aria-pressed", String(motion));
     $("#motion").title = motion ? "Pause animation" : "Enable animation";
-    if (!motion) drops.length = 0;
+    if (!motion) {
+      drops.length = 0;
+      rainAmount = 0;
+      rainActivity = 0;
+      storm = 0;
+      fieldEnergy = 0;
+      flowerEnergy.fill(0);
+      flowerPulses.fill(0);
+      rain.clearRect(0, 0, width, height);
+    }
   }
   $("#motion").addEventListener("click", () => setMotion(!motion));
   setMotion(motion);
@@ -1344,107 +1386,246 @@
     "change",
     (e) => setMotion(!e.matches),
   );
-  function flowerStemHeight(index) {
-    const base = index === 0 || index === 6 ? Math.max(145, height * 0.48) : 95;
-    return base + (state.sub / 100) * 55 + (index % 2) * 35;
-  }
-  function drawFlower(index, time, now) {
-    const x = flowerPositions[index] * width;
-    const events = visualNotes.filter(
-      (n) =>
-        Math.abs((n.voice.midi % 7) - index) === 0 &&
-        n.voice.t <= now &&
-        now < n.voice.off + n.voice.r,
+
+  function updateField(delta, now) {
+    const energy = flowerPositions.map(() => 0);
+    let total = 0;
+    visualNotes.forEach((n) => {
+      if (now < n.voice.t || now >= n.voice.off + n.voice.r) return;
+      const level = envelopeAt(n.voice, now) * n.voice.velocity;
+      energy[n.voice.midi % energy.length] += level;
+      total += level;
+    });
+    const target = motion ? clamp(total * 0.6, 0, 1.7) : 0;
+    fieldEnergy = smooth(
+      fieldEnergy,
+      target,
+      delta,
+      target > fieldEnergy ? 9 : 3,
     );
-    const energy = motion
-      ? clamp(
-          events.reduce(
-            (sum, n) => sum + envelopeAt(n.voice, now) * n.voice.velocity,
-            0,
-          ),
-          0,
-          1.5,
-        )
+    flowerEnergy.forEach((value, i) => {
+      const bloom = motion
+        ? clamp(target * 0.65 + energy[i] * 1.25 + flowerPulses[i] * 0.45, 0, 2)
+        : 0;
+      flowerEnergy[i] = smooth(
+        value,
+        bloom,
+        delta,
+        bloom > value ? 10 : 2 + 1 / (state.release + 0.2),
+      );
+      flowerPulses[i] *= Math.exp(-delta * 2.2);
+    });
+    rainActivity *= Math.exp(-delta * 1.25);
+    const weather = motion
+      ? clamp(rainActivity * 0.36 + fieldEnergy * 0.55, 0, 1.8)
       : 0;
-    const stemHeight = flowerStemHeight(index);
+    storm = smooth(storm, weather, delta, weather > storm ? 3 : 1.5);
+  }
+
+  // A continuous particle field: note activity changes density, never positions.
+  function makeDrop(scattered = false) {
+    const depth = 0.35 + Math.random() * 0.65;
+    const drop = {
+      x: 0,
+      y: 0,
+      depth,
+      speed: 380 + depth * 430,
+      length: 10 + depth * 22,
+      alpha: 0.09 + depth * 0.13,
+    };
+    resetDrop(drop, scattered);
+    return drop;
+  }
+  function resetDrop(drop, scattered = false) {
+    if (scattered) {
+      drop.x = Math.random() * width;
+      drop.y = Math.random() * height;
+      return;
+    }
+    // Feed both the top and windward edge so the bottom-left stays rainy too.
+    const leftShare = (height * 0.48) / (width + height * 0.48);
+    if (Math.random() < leftShare) {
+      drop.x = -35;
+      drop.y = Math.random() * height;
+    } else {
+      drop.x = Math.random() * (width + 70) - 35;
+      drop.y = -45;
+    }
+  }
+  function drawRain(delta) {
+    rain.clearRect(0, 0, width, height);
+    if (!motion) return;
+    const area = clamp((width * height) / 1000000, 0.4, 1.8);
+    const target = clamp(area * (40 + storm * 230), 16, 620);
+    rainAmount = smooth(rainAmount, target, delta, 2.7);
+    const count = Math.ceil(rainAmount);
+    while (drops.length < count) drops.push(makeDrop(true));
+    if (drops.length > count) drops.length = count;
+    const wind = 0.48 + Math.sin(fieldTime * 0.27) * 0.05;
+    const brightness = Math.sqrt(state.level / 100);
+    rain.lineCap = "round";
+    drops.forEach((drop) => {
+      const speed = drop.speed * (1 + storm * 0.24);
+      drop.x += speed * wind * delta;
+      drop.y += speed * delta;
+      if (drop.y > height + 55 || drop.x > width + 55) resetDrop(drop);
+      const length = drop.length * (1 + storm * 0.3 + state.release * 0.12);
+      rain.strokeStyle = `rgba(255,255,255,${drop.alpha * brightness * (0.8 + storm * 0.25)})`;
+      rain.lineWidth = 0.55 + drop.depth * 0.45;
+      rain.beginPath();
+      rain.moveTo(drop.x, drop.y);
+      rain.lineTo(drop.x - length * wind, drop.y - length);
+      rain.stroke();
+    });
+  }
+
+  function flowerStemHeight(index) {
+    const base =
+      index === 0 || index === 6
+        ? Math.max(145, height * 0.48)
+        : 108 + (index % 3) * 19;
+    return base + (state.sub / 100) * 125 + (index % 2) * 30;
+  }
+  function drawFlower(index, time) {
+    const x = flowerPositions[index] * width,
+      energy = flowerEnergy[index];
+    const stemHeight = flowerStemHeight(index) + energy * 22;
+    const breeze = motion
+      ? Math.sin(time * (0.8 + storm * 0.16) + index * 0.9)
+      : 0;
     const sway = motion
-      ? Math.sin(time * 0.28 + index * 1.6) * (2 + state.detune * 0.08)
+      ? breeze * (9 + state.detune * 0.48 + energy * 17) + storm * 12
       : 0;
-    const bloom = 16 + state.sustain * 13 + energy * 14;
-    const openness = 0.35 + (state.detune / 60) * 0.85;
-    const alpha = (0.34 + energy * 0.4) * Math.sqrt(state.level / 100);
+    const bloom = 23 + state.sustain * 27 + energy * 29;
+    const openness = 0.2 + (state.detune / 60) * 1.65;
+    const alpha =
+      clamp(0.42 + energy * 0.28, 0, 0.94) * Math.sqrt(state.level / 100);
     garden.save();
-    garden.translate(x, height + 15);
+    garden.translate(x, height + 12);
     garden.lineWidth = 0.85;
     garden.strokeStyle = `rgba(255,255,255,${alpha})`;
     garden.beginPath();
     garden.moveTo(0, 0);
     garden.bezierCurveTo(
-      -13,
+      -9 + sway * 0.15,
       -stemHeight * 0.3,
-      sway - 8,
-      -stemHeight * 0.7,
+      sway * 0.65,
+      -stemHeight * 0.72,
       sway,
-      -stemHeight - 15,
+      -stemHeight - 12,
     );
     garden.stroke();
     const leafOpen = state.tone / 100;
     for (let side = -1; side <= 1; side += 2) {
-      const ly = -stemHeight * (side === 1 ? 0.4 : 0.63),
-        lw = 12 + leafOpen * 21;
+      const fraction = side === 1 ? 0.38 : 0.64;
+      const ly = -stemHeight * fraction,
+        lx = sway * fraction * fraction;
+      const flutter = motion
+        ? Math.sin(time * 1.8 + index * 2 + side) * (3 + energy * 8)
+        : 0;
+      const reach = 16 + leafOpen * 48 + energy * 10,
+        lift = 15 + leafOpen * 29;
       garden.beginPath();
-      garden.moveTo(-4, ly);
-      garden.bezierCurveTo(side * lw, ly - 2, side * lw, ly - 25, -4, ly);
+      garden.moveTo(lx, ly);
+      garden.bezierCurveTo(
+        lx + side * reach * 0.7,
+        ly + flutter,
+        lx + side * reach,
+        ly - lift - flutter,
+        lx,
+        ly,
+      );
       garden.stroke();
       garden.beginPath();
-      garden.moveTo(-4, ly);
-      garden.lineTo(side * lw * 0.68, ly - 12);
+      garden.moveTo(lx, ly);
+      garden.lineTo(lx + side * reach * 0.63, ly - lift * 0.44);
       garden.stroke();
     }
-    garden.translate(sway, -stemHeight - 15);
+    garden.translate(sway, -stemHeight - 12);
+    garden.rotate(breeze * 0.1 + energy * 0.06);
     const count = state.voices * 2 + 3;
     for (let petal = 0; petal < count; petal++) {
       const angle =
         (petal / count) * Math.PI * 2 +
         index * 0.3 +
         (state.wave === "triangle" ? Math.PI / 4 : 0);
+      const flutter = motion
+        ? Math.sin(time * 1.5 + petal * 0.8 + index) * (0.03 + energy * 0.055)
+        : 0;
+      const length = bloom * (0.65 + openness * 0.8) * (1 + flutter);
+      const spread = (3 + openness * 16) * (0.55 + (state.morph / 100) * 1.45);
+      const curl = (state.morph / 100 - 0.5) * length * 0.25;
       garden.save();
       garden.rotate(angle);
-      const length = bloom * (0.8 + openness * 0.7),
-        spread = (5 + openness * 9) * (1 + state.morph / 150);
       garden.beginPath();
-      garden.moveTo(0, -3);
+      garden.moveTo(0, -4);
       garden.bezierCurveTo(
         -spread,
-        -length * 0.5,
-        -spread,
+        -length * 0.36,
+        -spread + curl,
         -length,
-        0,
+        curl,
         -length,
       );
-      garden.bezierCurveTo(spread, -length, spread, -length * 0.5, 0, -3);
+      garden.bezierCurveTo(
+        spread + curl,
+        -length,
+        spread,
+        -length * 0.36,
+        0,
+        -4,
+      );
       garden.stroke();
       garden.restore();
     }
     garden.beginPath();
-    garden.arc(0, 0, 3.5 + energy * 2, 0, Math.PI * 2);
+    garden.arc(0, 0, 4.5 + energy * 4, 0, Math.PI * 2);
     garden.stroke();
+    garden.restore();
     if (energy > 0.03 && state.resonance > 0) {
-      const ripple = motion ? (time * 0.4 + index) % 1 : 0.5;
-      garden.strokeStyle = `rgba(255,255,255,${(alpha * (1 - ripple) * state.resonance) / 100})`;
+      const ripple = (time * 0.8 + index * 0.13) % 1;
+      garden.strokeStyle = `rgba(255,255,255,${((alpha * (1 - ripple) * state.resonance) / 100) * 0.7})`;
       garden.beginPath();
       garden.ellipse(
-        0,
-        stemHeight - 4,
-        10 + ripple * 42,
-        2 + ripple * 8,
+        x,
+        height - 9,
+        10 + ripple * (35 + state.resonance * 0.6),
+        2 + ripple * 10,
         0,
         0,
         Math.PI * 2,
       );
       garden.stroke();
     }
-    garden.restore();
+  }
+  function drawGrass(time) {
+    const brightness = Math.sqrt(state.level / 100);
+    grass.forEach((tuft, index) => {
+      const growth = 18 + tuft.size * 48 + state.sub * 0.24 + fieldEnergy * 20;
+      const wind = motion
+        ? Math.sin(time * 1.3 + tuft.phase + (tuft.x / width) * 2) *
+            (5 + state.detune * 0.22 + fieldEnergy * 8) +
+          storm * 9
+        : 0;
+      garden.strokeStyle = `rgba(255,255,255,${(0.2 + tuft.size * 0.2 + fieldEnergy * 0.1) * brightness})`;
+      garden.lineWidth = 0.65 + tuft.size * 0.25;
+      for (let blade = -1; blade <= 1; blade++) {
+        const reach = blade * (7 + state.tone * 0.12 + tuft.size * 8);
+        const tall =
+          growth * (blade === 0 ? 1 : 0.58 + seed(index + blade + 91) * 0.3);
+        garden.beginPath();
+        garden.moveTo(tuft.x + blade * 2, height + 2);
+        garden.bezierCurveTo(
+          tuft.x + wind * 0.2,
+          height - tall * 0.3,
+          tuft.x + reach * 0.6 + wind * 0.7,
+          height - tall * 0.75,
+          tuft.x + reach + wind,
+          height - tall,
+        );
+        garden.stroke();
+      }
+    });
   }
   const scopeData = new Float32Array(1024);
   function drawScope() {
@@ -1480,38 +1661,23 @@
         n.born = true;
         lastVisual = n.voice;
         if (motion) {
-          const flower = n.voice.midi % 7;
-          drops.push({
-            x: flowerPositions[flower] * width + ((n.voice.midi % 3) - 1) * 18,
-            y: Math.max(
-              30,
-              height - flowerStemHeight(flower) - 160 - (n.voice.midi - 48) * 2,
-            ),
-            speed: 140 + n.voice.velocity * 150,
-            length: 8 + Math.min(25, (n.voice.off - n.voice.t) * 20),
-            life: 1,
-          });
+          rainActivity = Math.min(10, rainActivity + n.voice.velocity * 0.85);
+          const flower = n.voice.midi % flowerPositions.length;
+          flowerPulses[flower] = Math.min(
+            2,
+            flowerPulses[flower] + n.voice.velocity,
+          );
         }
       }
     });
     for (let i = visualNotes.length - 1; i >= 0; i--)
       if (now > visualNotes[i].voice.off + visualNotes[i].voice.r + 1)
         visualNotes.splice(i, 1);
+    updateField(delta, now);
     garden.clearRect(0, 0, width, height);
-    flowerPositions.forEach((_, i) => drawFlower(i, fieldTime, now));
-    if (motion)
-      for (let i = drops.length - 1; i >= 0; i--) {
-        const drop = drops[i];
-        drop.y += drop.speed * delta;
-        drop.life -= delta * 0.45;
-        garden.strokeStyle = `rgba(255,255,255,${((Math.max(0, drop.life) * state.level) / 100) * 0.7})`;
-        garden.lineWidth = 0.8;
-        garden.beginPath();
-        garden.moveTo(drop.x, drop.y);
-        garden.lineTo(drop.x - 1, drop.y - drop.length);
-        garden.stroke();
-        if (drop.y > height - 20 || drop.life <= 0) drops.splice(i, 1);
-      }
+    flowerPositions.forEach((_, i) => drawFlower(i, fieldTime));
+    drawGrass(fieldTime);
+    drawRain(delta);
     const voice = lastVisual,
       envCursor = $("#env-cursor");
     if (motion && voice && now >= voice.t && now < voice.off + voice.r) {
