@@ -576,6 +576,110 @@ svg {
   color: #eee;
   background: #ffffff09;
 }
+.osc-row {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+}
+.osc-row > .knob-row {
+  flex: none;
+  gap: 13px;
+}
+.unison-control {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  height: 46px;
+  border: 1px solid #292929;
+  border-radius: 2px;
+}
+.unison-control:focus-within {
+  border-color: #999;
+}
+.unison-spread {
+  height: 100%;
+  cursor: ew-resize;
+  touch-action: none;
+}
+.unison-spread[data-axis="vertical"] {
+  cursor: ns-resize;
+}
+#unison-display {
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.unison-guide {
+  fill: none;
+  stroke: #2a2a2a;
+  stroke-width: 0.6;
+}
+#unison-lines line {
+  stroke: #e4e4e4;
+  stroke-width: 1;
+  stroke-linecap: round;
+}
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+.voice-count {
+  position: absolute;
+  bottom: 1px;
+  left: 3px;
+  display: flex;
+  align-items: center;
+  height: 12px;
+}
+.voice-count button {
+  width: 14px;
+  height: 12px;
+  border: 0;
+  padding: 0;
+  font-size: 9px;
+  line-height: 1;
+  color: #888;
+}
+.voice-count button:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+.voice-count input {
+  width: 16px;
+  height: 12px;
+  padding: 0;
+  border: 0;
+  text-align: center;
+  font-size: 8px;
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+.voice-count input::-webkit-inner-spin-button,
+.voice-count input::-webkit-outer-spin-button {
+  appearance: none;
+  margin: 0;
+}
+.detune-readout {
+  position: absolute;
+  bottom: 2px;
+  right: 5px;
+  opacity: 0;
+  pointer-events: none;
+  color: #999;
+  font-size: 7px;
+}
+.unison-control:hover .detune-readout,
+.unison-control:focus-within .detune-readout {
+  opacity: 1;
+}
 .knob-row {
   display: flex;
   justify-content: space-around;

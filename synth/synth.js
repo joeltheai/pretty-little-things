@@ -4,6 +4,14 @@
   const $$ = (s) => [...document.querySelectorAll(s)];
   const NS = "http://www.w3.org/2000/svg";
   const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
+  const DETUNE_RANGE_CENTS = 50;
+  const unisonPosition = (index, count) =>
+    count === 1 ? 0 : (index * 2) / (count - 1) - 1;
+  const detuneControlAmount = (cents) =>
+    Math.sqrt(clamp(cents / DETUNE_RANGE_CENTS, 0, 1));
+  const detuneFromControl = (amount) =>
+    clamp(amount, 0, 1) ** 2 * DETUNE_RANGE_CENTS;
+  const formatCents = (cents) => `${Number(cents.toFixed(2))}ct`;
   const svg = (tag, attrs = {}) => {
     const el = document.createElementNS(NS, tag);
     Object.entries(attrs).forEach(([key, value]) =>
@@ -306,7 +314,7 @@
       nodes = [];
     const freq = 440 * 2 ** ((midi - 69) / 12);
     for (let i = 0; i < state.voices; i++) {
-      const spread = state.voices === 1 ? 0 : (i / (state.voices - 1)) * 2 - 1;
+      const spread = unisonPosition(i, state.voices);
       const osc = ctx.createOscillator(),
         gain = ctx.createGain(),
         pan = ctx.createStereoPanner();
@@ -388,7 +396,7 @@
   // Knobs retain native range inputs for keyboard and assistive technology.
   const definitions = {
     voices: [1, 7, 1, "unison", (v) => String(v)],
-    detune: [0, 60, 1, "detune", (v) => `${v}ct`],
+    detune: [0, DETUNE_RANGE_CENTS, 0, "detune", formatCents],
     morph: [0, 100, 1, "position", (v) => `${v}%`],
     sub: [0, 100, 1, "sub", (v) => `${v}%`],
     attack: [0.005, 2, 0.005, "attack", seconds],
@@ -424,7 +432,7 @@
     const input = $(`#${id}`),
       [min, max, step] = definitions[id];
     input.value = clamp(
-      min + Math.round((value - min) / step) * step,
+      step > 0 ? min + Math.round((value - min) / step) * step : value,
       min,
       max,
     );
@@ -456,7 +464,7 @@
           .querySelector(".knob-arc")
           .setAttribute("d", arc(-135, angle + 0.001));
       }
-      if (id === "morph" || id === "voices" || id === "detune") drawWave();
+      if (id === "morph") drawWave();
       if (id === "morph") rebuildWave();
       if (["attack", "decay", "sustain", "release"].includes(id))
         drawEnvelope();
@@ -480,19 +488,6 @@
           (state.level / 100) * 0.48,
           ctx.currentTime,
           0.02,
-        );
-      if (id === "detune" && ctx)
-        activeVoices.forEach((v) =>
-          v.oscs
-            .slice(0, v.unison)
-            .forEach((o, i) =>
-              o.detune.setTargetAtTime(
-                (v.unison === 1 ? 0 : (i / (v.unison - 1)) * 2 - 1) *
-                  state.detune,
-                ctx.currentTime,
-                0.03,
-              ),
-            ),
         );
     };
     range.addEventListener("input", sync);
@@ -525,9 +520,159 @@
     }
     return sync;
   }
+  function drawUnison() {
+    const lines = $("#unison-lines");
+    lines.replaceChildren();
+    // Quadratic pitch response gives fine low-end control, with no cent snapping.
+    const spread = detuneControlAmount(state.detune) * 82;
+    for (let i = 0; i < state.voices; i++) {
+      const ratio = unisonPosition(i, state.voices);
+      const x = 100 + ratio * spread;
+      lines.append(svg("line", { x1: x, x2: x, y1: 8, y2: 30 }));
+    }
+    $("#unison-display").setAttribute(
+      "aria-label",
+      `${state.voices} unison voices, plus or minus ${Number(state.detune.toFixed(2))} cents`,
+    );
+    $("#detune-out").textContent = `±${formatCents(state.detune)}`;
+    $("#voice-less").disabled = state.voices <= 1;
+    $("#voice-more").disabled = state.voices >= 7;
+  }
+  function retuneVoices() {
+    if (!ctx) return;
+    activeVoices.forEach((voice) =>
+      voice.oscs.slice(0, voice.unison).forEach((osc, i) => {
+        const ratio = unisonPosition(i, voice.unison);
+        const parameter = osc.detune,
+          now = ctx.currentTime;
+        if (typeof parameter.cancelAndHoldAtTime === "function")
+          parameter.cancelAndHoldAtTime(now);
+        else {
+          const value = parameter.value;
+          parameter.cancelScheduledValues(now);
+          parameter.setValueAtTime(value, now);
+        }
+        parameter.setTargetAtTime(ratio * state.detune, now, 0.012);
+      }),
+    );
+  }
+  function initUnison() {
+    ["voices", "detune"].forEach((id) => {
+      const input = $(`#${id}`),
+        [min, max] = definitions[id];
+      input.value = state[id];
+      const sync = () => {
+        const number = Number(input.value);
+        state[id] = clamp(
+          Number.isFinite(number)
+            ? id === "voices"
+              ? Math.round(number)
+              : number
+            : state[id],
+          min,
+          max,
+        );
+        input.value = state[id];
+        input.setAttribute(
+          "aria-valuetext",
+          id === "voices"
+            ? `${state[id]} voices`
+            : `plus or minus ${Number(state[id].toFixed(2))} cents`,
+        );
+        input.title =
+          id === "voices"
+            ? `${state[id]} unison voices`
+            : `±${formatCents(state[id])} detune`;
+        drawUnison();
+        drawWave();
+        if (id === "detune") retuneVoices();
+      };
+      input.addEventListener("input", sync);
+      input.addEventListener("change", sync);
+      syncControls.push(sync);
+    });
+    $("#voice-less").addEventListener("click", () =>
+      setControl("voices", state.voices - 1),
+    );
+    $("#voice-more").addEventListener("click", () =>
+      setControl("voices", state.voices + 1),
+    );
+    $("#detune").addEventListener("keydown", (e) => {
+      const directions = {
+        ArrowLeft: -1,
+        ArrowDown: -1,
+        ArrowRight: 1,
+        ArrowUp: 1,
+        PageDown: -10,
+        PageUp: 10,
+      };
+      if (!(e.key in directions) && e.key !== "Home" && e.key !== "End") return;
+      e.preventDefault();
+      setControl(
+        "detune",
+        e.key === "Home"
+          ? 0
+          : e.key === "End"
+            ? DETUNE_RANGE_CENTS
+            : state.detune + directions[e.key] * (e.shiftKey ? 0.01 : 0.1),
+      );
+    });
+    const field = $("#unison-spread");
+    let drag = null;
+    field.addEventListener("pointerdown", (e) => {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      $("#detune").focus();
+      field.setPointerCapture(e.pointerId);
+      drag = {
+        x: e.clientX,
+        y: e.clientY,
+        amount: detuneControlAmount(state.detune),
+        side:
+          e.clientX < field.getBoundingClientRect().left + field.clientWidth / 2
+            ? -1
+            : 1,
+        axis: null,
+      };
+    });
+    field.addEventListener("pointermove", (e) => {
+      if (!drag) return;
+      const dx = e.clientX - drag.x,
+        dy = e.clientY - drag.y;
+      if (!drag.axis && Math.hypot(dx, dy) >= 1)
+        drag.axis = Math.abs(dx) >= Math.abs(dy) ? "horizontal" : "vertical";
+      if (!drag.axis) return;
+      field.dataset.axis = drag.axis;
+      const movement = drag.axis === "horizontal" ? dx * drag.side : -dy;
+      drag.amount = clamp(
+        drag.amount +
+          movement /
+            (field.getBoundingClientRect().width *
+              0.41 *
+              (e.shiftKey ? 10 : 1)),
+        0,
+        1,
+      );
+      drag.x = e.clientX;
+      drag.y = e.clientY;
+      setControl("detune", detuneFromControl(drag.amount));
+    });
+    const end = () => {
+      if (!drag) return;
+      drag = null;
+      delete field.dataset.axis;
+    };
+    ["pointerup", "pointercancel", "lostpointercapture"].forEach((type) =>
+      field.addEventListener(type, end),
+    );
+    field.addEventListener("dblclick", () => {
+      setControl("detune", defaults.detune);
+    });
+  }
   const defaults = { ...state };
   const syncControls = [];
-  ["voices", "detune", "morph", "sub"].forEach((id) =>
+  initUnison();
+  ["morph", "sub"].forEach((id) =>
     syncControls.push(control(id, "#osc-controls")),
   );
   ["attack", "decay", "sustain", "release"].forEach((id) =>
@@ -1645,7 +1790,7 @@
       ? breeze * (9 + state.detune * 0.48 + energy * 17) + storm * 12
       : 0;
     const bloom = 23 + state.sustain * 27 + energy * 29;
-    const openness = 0.2 + (state.detune / 60) * 1.65;
+    const openness = 0.2 + (state.detune / DETUNE_RANGE_CENTS) * 1.65;
     const alpha =
       clamp(0.42 + energy * 0.28, 0, 0.94) * Math.sqrt(state.level / 100);
     garden.save();
