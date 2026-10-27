@@ -47,10 +47,11 @@
       this.drops = [];
       this.fireworks = [];
       this.plants = this.createPlants();
-      this.grass = Array.from({ length: 130 }, (_, i) => ({
-        u: (i + this.random(i + 900)) / 130,
-        depth: this.random(i + 1100) ** 1.6 * 1500 - 110,
-        height: 14 + this.random(i + 1300) * 42,
+      const grassCount = 900;
+      this.grass = Array.from({ length: grassCount }, (_, i) => ({
+        u: (i + this.random(i + 900)) / grassCount,
+        depth: this.random(i + 1100) ** 1.6 * 1660 - 160,
+        height: 18 + this.random(i + 1300) * 58,
         phase: this.random(i + 1500) * TAU,
         lean: this.random(i + 1700) * 2 - 1,
       })).sort((a, b) => b.depth - a.depth);
@@ -87,24 +88,39 @@
         "poppy",
         "bell",
       ];
-      return [...heroes, ...understory]
+      const wildflowers = Array.from(
+        { length: 56 },
+        (_, i) => ["cosmos", "daisy", "poppy", "bell", "seedhead"][i % 5],
+      );
+      return [...heroes, ...understory, ...wildflowers]
         .map((kind, i) => {
           const r = (n) => this.random(i * 47 + n + 20);
           const hero = i < heroes.length;
+          const meadow = i >= heroes.length + understory.length;
+          const patch = i - heroes.length - understory.length;
+          const row = Math.floor(patch / 14);
           const baseHeight = hero
             ? i === 0 || i === 6
               ? 310
               : 160 + r(1) * 65
-            : 100 + r(1) * 160;
-          const baseRadius = 20 + r(2) * 16;
+            : meadow
+              ? 85 + r(1) * 110
+              : 100 + r(1) * 160;
+          const baseRadius = meadow ? 12 + r(2) * 20 : 20 + r(2) * 16;
           const pitch = (kind === "poppy" ? 0.55 : -0.25) + (r(3) - 0.5) * 0.75;
           return {
             kind,
             group: i % 7,
             u: hero
               ? anchors[i]
-              : (i - heroes.length + 0.2 + r(4) * 0.6) / understory.length,
-            depth: hero ? 40 + r(5) * 210 : 280 + r(5) * 1250,
+              : meadow
+                ? (((patch % 14) + 0.1 + r(4) * 0.8) / 14 + row * 0.017) % 1
+                : (i - heroes.length + 0.2 + r(4) * 0.6) / understory.length,
+            depth: hero
+              ? 40 + r(5) * 210
+              : meadow
+                ? [-40, 260, 650, 1100][row] + r(5) * 190
+                : 280 + r(5) * 1250,
             baseHeight,
             baseRadius,
             height: spring(baseHeight * (0.88 + (this.state.sub / 100) * 0.42)),
@@ -625,11 +641,25 @@
     }
 
     drawGrass() {
-      const limit = Math.min(this.grass.length, Math.ceil(this.width / 7));
+      const ctx = this.garden;
+      const limit = Math.min(this.grass.length, Math.ceil(this.width * 0.7));
+      const scale = this.worldScale,
+        brightness = Math.sqrt(this.state.level / 100);
+      let band = -1;
+      // Batch nearby depths into a few paths so the denser field stays smooth.
       for (let i = 0; i < limit; i++) {
         const tuft = this.grass[Math.floor((i / limit) * this.grass.length)];
         const depth = tuft.depth,
-          scale = this.worldScale;
+          nextBand = clamp(Math.floor((depth + 160) / 280), 0, 5);
+        if (nextBand !== band) {
+          if (band !== -1) ctx.stroke();
+          band = nextBand;
+          ctx.beginPath();
+          ctx.strokeStyle = `rgba(255,255,255,${clamp(0.35 - (band * 280 - 20) / 2600, 0.055, 0.4) * brightness})`;
+          ctx.lineWidth = band <= 1 ? 0.85 : 0.55;
+          ctx.lineCap = "round";
+          ctx.lineJoin = "round";
+        }
         const x =
           ((tuft.u - 0.5) * this.width * (this.cameraDistance + depth)) /
           this.focal;
@@ -639,17 +669,22 @@
           Math.sin(this.time * 0.65 + tuft.phase + tuft.u * 2) *
             (5 + this.controls.detune.value * 0.12) +
           this.storm.value * 3;
-        const alpha = clamp(0.35 - depth / 2600, 0.055, 0.4);
         for (let blade = -1; blade <= 1; blade++) {
           const lean = (blade * 9 + tuft.lean * 9 + wind) * scale;
           const tall = h * (blade === 0 ? 1 : 0.7);
-          const points = Array.from({ length: 7 }, (_, j) => {
+          for (let j = 0; j <= 6; j++) {
             const t = j / 6;
-            return [x + lean * t * t, tall * t, depth + blade * 4 * t];
-          });
-          this.stroke(points, alpha, depth < 100 ? 0.85 : 0.55);
+            const perspective =
+              this.focal / (this.cameraDistance + depth + blade * 4 * t);
+            const px = this.width / 2 + (x + lean * t * t) * perspective;
+            const py =
+              this.horizon - (tall * t - this.cameraHeight) * perspective;
+            if (j) ctx.lineTo(px, py);
+            else ctx.moveTo(px, py);
+          }
         }
       }
+      if (band !== -1) ctx.stroke();
     }
 
     drawMotes() {
