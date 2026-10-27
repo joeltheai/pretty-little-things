@@ -294,43 +294,82 @@ input {
 /* synth */
 
 .synth-window {
-  width: 270px;
+  width: 348px;
 }
 
 .synth {
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: 8px;
   padding: 10px;
 }
 
-.wave-row {
+.module {
+  overflow: hidden;
+  border: 1px solid var(--line-soft);
+  border-radius: 4px;
+  background: #0a0a0a;
+}
+
+.module-head {
   display: flex;
   align-items: center;
+  height: 20px;
+  padding: 0 8px;
+  border-bottom: 1px solid var(--line-soft);
+  color: var(--dim);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.module-body {
+  padding: 10px;
+}
+
+.module-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 8px;
 }
 
-.wave-row .label {
-  width: 42px;
-  color: var(--dim);
-  font-size: 9px;
+.module-row .module-body {
+  display: flex;
+  justify-content: center;
 }
 
 .waves {
-  flex: 1;
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 2px;
+  gap: 4px;
+  margin-bottom: 12px;
 }
 
 .waves button {
-  padding: 4px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 30px;
+  padding: 0;
   border: 1px solid var(--line);
   border-radius: 3px;
   background: transparent;
   color: var(--dim);
-  font-size: 9px;
   cursor: pointer;
+}
+
+.waves button svg {
+  display: block;
+  width: 26px;
+  height: 14px;
+}
+
+.waves button svg path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .waves button:hover {
@@ -343,22 +382,97 @@ input {
   color: #000;
 }
 
-.control {
-  display: grid;
-  grid-template-columns: 44px minmax(0, 1fr) 34px;
+.knob-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.knob {
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 3px;
+  width: 62px;
 }
 
-.control label {
+.knob-face {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  cursor: ns-resize;
+  touch-action: none;
+}
+
+.knob-face svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.knob-face input[type="range"] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.knob-ticks line {
+  stroke: #2b2b2b;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+
+.knob-track {
+  fill: none;
+  stroke: #1e1e1e;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.knob-arc {
+  fill: none;
+  stroke: var(--dim);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.knob-body {
+  fill: #151515;
+  stroke: #2c2c2c;
+  stroke-width: 1;
+}
+
+.knob-pointer line {
+  stroke: var(--text);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}
+
+.knob-face:hover .knob-body {
+  stroke: #3b3b3b;
+}
+
+.knob-face.dragging .knob-body {
+  fill: #1b1b1b;
+}
+
+.knob:focus-within .knob-body {
+  stroke: var(--dim);
+}
+
+.knob label {
   color: var(--dim);
   font-size: 9px;
 }
 
-.control output {
+.knob output {
   color: var(--dim);
   font-size: 9px;
-  text-align: right;
   font-variant-numeric: tabular-nums;
 }
 

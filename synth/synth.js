@@ -112,8 +112,134 @@
   const $ = (selector) => document.querySelector(selector);
 
   /* ------------------------------------------------------------------ *
+   * Knobs
+   *
+   * Each knob wraps a real range input (kept for keyboard + screen
+   * reader support); the dial is decorative and drives that input.
+   * ------------------------------------------------------------------ */
+
+  const KNOB_START = -135;
+  const KNOB_SWEEP = 270;
+  const knobs = new Map();
+
+  function knobPolar(cx, cy, radius, deg) {
+    const rad = (deg * Math.PI) / 180;
+    return [cx + radius * Math.sin(rad), cy - radius * Math.cos(rad)];
+  }
+
+  function knobArc(cx, cy, radius, from, to) {
+    const [x0, y0] = knobPolar(cx, cy, radius, from);
+    const [x1, y1] = knobPolar(cx, cy, radius, to);
+    const large = Math.abs(to - from) > 180 ? 1 : 0;
+    return `M ${x0.toFixed(2)} ${y0.toFixed(2)} A ${radius} ${radius} 0 ${large} 1 ${x1.toFixed(2)} ${y1.toFixed(2)}`;
+  }
+
+  function knobSvg() {
+    const ns = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(ns, "svg");
+    svg.setAttribute("viewBox", "0 0 64 64");
+    svg.setAttribute("aria-hidden", "true");
+
+    let ticks = "";
+    for (let i = 0; i <= 10; i++) {
+      const angle = KNOB_START + (i / 10) * KNOB_SWEEP;
+      const [x0, y0] = knobPolar(32, 32, 26, angle);
+      const [x1, y1] = knobPolar(32, 32, 29, angle);
+      ticks += `<line x1="${x0.toFixed(2)}" y1="${y0.toFixed(2)}" x2="${x1.toFixed(2)}" y2="${y1.toFixed(2)}" />`;
+    }
+
+    svg.innerHTML = [
+      `<g class="knob-ticks">${ticks}</g>`,
+      `<path class="knob-track" d="${knobArc(32, 32, 23.5, KNOB_START, KNOB_START + KNOB_SWEEP)}" />`,
+      `<path class="knob-arc" />`,
+      `<circle class="knob-body" cx="32" cy="32" r="19" />`,
+      `<g class="knob-pointer"><line x1="32" y1="25" x2="32" y2="15" /></g>`,
+    ].join("");
+
+    return svg;
+  }
+
+  function renderKnob(input) {
+    const knob = knobs.get(input);
+    if (!knob) return;
+
+    const min = Number(input.min);
+    const max = Number(input.max);
+    const t = max === min ? 0 : (Number(input.value) - min) / (max - min);
+    const angle = KNOB_START + Math.min(1, Math.max(0, t)) * KNOB_SWEEP;
+
+    knob.pointer.setAttribute("transform", `rotate(${angle.toFixed(2)} 32 32)`);
+    knob.arc.setAttribute("d", knobArc(32, 32, 23.5, KNOB_START, angle));
+  }
+
+  function setKnobValue(input, value) {
+    const min = Number(input.min);
+    const max = Number(input.max);
+    const step = Number(input.step) || 1;
+    const snapped = min + Math.round((value - min) / step) * step;
+    const next = Math.min(max, Math.max(min, Number(snapped.toFixed(6))));
+
+    if (Number(input.value) !== next) {
+      input.value = String(next);
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+
+    return next;
+  }
+
+  function initKnobs() {
+    document.querySelectorAll(".knob-face").forEach((face) => {
+      const input = face.querySelector("input");
+      if (!input) return;
+
+      const svg = knobSvg();
+      face.appendChild(svg);
+      knobs.set(input, {
+        pointer: svg.querySelector(".knob-pointer"),
+        arc: svg.querySelector(".knob-arc"),
+      });
+
+      let drag = null;
+
+      const move = (event) => {
+        if (!drag) return;
+
+        const range = Number(input.max) - Number(input.min);
+        const speed = event.shiftKey ? 520 : 180;
+        const delta = drag.y - event.clientY;
+
+        drag.y = event.clientY;
+        drag.raw += (delta * range) / speed;
+        setKnobValue(input, drag.raw);
+      };
+
+      const end = () => {
+        if (!drag) return;
+        drag = null;
+        face.classList.remove("dragging");
+        window.removeEventListener("pointermove", move);
+        window.removeEventListener("pointerup", end);
+        window.removeEventListener("pointercancel", end);
+      };
+
+      face.addEventListener("pointerdown", (event) => {
+        if (event.button !== 0) return;
+        event.preventDefault();
+
+        drag = { y: event.clientY, raw: Number(input.value) };
+        face.classList.add("dragging");
+        window.addEventListener("pointermove", move);
+        window.addEventListener("pointerup", end);
+        window.addEventListener("pointercancel", end);
+      });
+    });
+  }
+
+  /* ------------------------------------------------------------------ *
    * Synth controls
    * ------------------------------------------------------------------ */
+
+  initKnobs();
 
   const waveButtons = Array.from(document.querySelectorAll(".waves button"));
   waveButtons.forEach((button) => {
@@ -133,6 +259,7 @@
       const value = Number(input.value);
       state[key] = value;
       output.textContent = format(value);
+      renderKnob(input);
       if (apply) apply(value);
     };
 

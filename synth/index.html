@@ -50,62 +50,117 @@
         <span class="grip" aria-hidden="true">···</span>
       </header>
       <div class="synth">
-        <div class="wave-row">
-          <span class="label">wave</span>
-          <div class="waves" role="group" aria-label="Waveform">
-            <button type="button" data-wave="sine" aria-pressed="false">sine</button>
-            <button type="button" data-wave="triangle" aria-pressed="false">tri</button>
-            <button type="button" data-wave="sawtooth" aria-pressed="true">saw</button>
-            <button type="button" data-wave="square" aria-pressed="false">square</button>
+        <div class="module">
+          <div class="module-head"><span>osc</span></div>
+          <div class="module-body">
+            <div class="waves" role="group" aria-label="Waveform">
+              <button type="button" data-wave="sine" aria-pressed="false" aria-label="sine" title="sine">
+                <svg viewBox="0 0 30 16" aria-hidden="true">
+                  <path d="M2 8 Q 8 1 14 8 T 26 8" />
+                </svg>
+              </button>
+              <button type="button" data-wave="triangle" aria-pressed="false" aria-label="triangle" title="triangle">
+                <svg viewBox="0 0 30 16" aria-hidden="true">
+                  <path d="M2 12 L 8 4 L 14 12 L 20 4 L 26 12" />
+                </svg>
+              </button>
+              <button type="button" data-wave="sawtooth" aria-pressed="true" aria-label="sawtooth" title="saw">
+                <svg viewBox="0 0 30 16" aria-hidden="true">
+                  <path d="M2 13 L 10 3 L 10 13 L 18 3 L 18 13 L 26 3" />
+                </svg>
+              </button>
+              <button type="button" data-wave="square" aria-pressed="false" aria-label="square" title="square">
+                <svg viewBox="0 0 30 16" aria-hidden="true">
+                  <path d="M2 13 L 2 3 L 10 3 L 10 13 L 18 13 L 18 3 L 26 3" />
+                </svg>
+              </button>
+            </div>
+
+            <div class="knob-row">
+              <div class="knob">
+                <div class="knob-face">
+                  <input id="voices" type="range" min="1" max="4" step="1" value="3" />
+                </div>
+                <label for="voices">voices</label>
+                <output id="voices-out" for="voices">3</output>
+              </div>
+
+              <div class="knob">
+                <div class="knob-face">
+                  <input id="detune" type="range" min="0" max="50" step="1" value="12" />
+                </div>
+                <label for="detune">detune</label>
+                <output id="detune-out" for="detune">12</output>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div class="control">
-          <label for="voices">voices</label>
-          <input id="voices" type="range" min="1" max="4" step="1" value="3" />
-          <output id="voices-out" for="voices">3</output>
+        <div class="module">
+          <div class="module-head"><span>env</span></div>
+          <div class="module-body">
+            <div class="knob-row">
+              <div class="knob">
+                <div class="knob-face">
+                  <input id="attack" type="range" min="0.005" max="1" step="0.005" value="0.01" />
+                </div>
+                <label for="attack">attack</label>
+                <output id="attack-out" for="attack">0.01</output>
+              </div>
+
+              <div class="knob">
+                <div class="knob-face">
+                  <input id="decay" type="range" min="0.01" max="1.5" step="0.01" value="0.25" />
+                </div>
+                <label for="decay">decay</label>
+                <output id="decay-out" for="decay">0.25</output>
+              </div>
+
+              <div class="knob">
+                <div class="knob-face">
+                  <input id="sustain" type="range" min="0" max="1" step="0.01" value="0.55" />
+                </div>
+                <label for="sustain">sustain</label>
+                <output id="sustain-out" for="sustain">55%</output>
+              </div>
+
+              <div class="knob">
+                <div class="knob-face">
+                  <input id="release" type="range" min="0.02" max="2" step="0.01" value="0.35" />
+                </div>
+                <label for="release">release</label>
+                <output id="release-out" for="release">0.35</output>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div class="control">
-          <label for="detune">detune</label>
-          <input id="detune" type="range" min="0" max="50" step="1" value="12" />
-          <output id="detune-out" for="detune">12</output>
-        </div>
+        <div class="module-row">
+          <div class="module">
+            <div class="module-head"><span>filter</span></div>
+            <div class="module-body">
+              <div class="knob">
+                <div class="knob-face">
+                  <input id="tone" type="range" min="0" max="100" step="1" value="62" />
+                </div>
+                <label for="tone">tone</label>
+                <output id="tone-out" for="tone">3.0k</output>
+              </div>
+            </div>
+          </div>
 
-        <div class="control">
-          <label for="attack">attack</label>
-          <input id="attack" type="range" min="0.005" max="1" step="0.005" value="0.01" />
-          <output id="attack-out" for="attack">0.01</output>
-        </div>
-
-        <div class="control">
-          <label for="decay">decay</label>
-          <input id="decay" type="range" min="0.01" max="1.5" step="0.01" value="0.25" />
-          <output id="decay-out" for="decay">0.25</output>
-        </div>
-
-        <div class="control">
-          <label for="sustain">sustain</label>
-          <input id="sustain" type="range" min="0" max="1" step="0.01" value="0.55" />
-          <output id="sustain-out" for="sustain">55%</output>
-        </div>
-
-        <div class="control">
-          <label for="release">release</label>
-          <input id="release" type="range" min="0.02" max="2" step="0.01" value="0.35" />
-          <output id="release-out" for="release">0.35</output>
-        </div>
-
-        <div class="control">
-          <label for="tone">tone</label>
-          <input id="tone" type="range" min="0" max="100" step="1" value="62" />
-          <output id="tone-out" for="tone">3.0k</output>
-        </div>
-
-        <div class="control">
-          <label for="level">level</label>
-          <input id="level" type="range" min="0" max="100" step="1" value="70" />
-          <output id="level-out" for="level">70%</output>
+          <div class="module">
+            <div class="module-head"><span>out</span></div>
+            <div class="module-body">
+              <div class="knob">
+                <div class="knob-face">
+                  <input id="level" type="range" min="0" max="100" step="1" value="70" />
+                </div>
+                <label for="level">level</label>
+                <output id="level-out" for="level">70%</output>
+              </div>
+            </div>
+          </div>
         </div>
 
         <p class="hint">a–k play · space arp · z/x octave</p>
