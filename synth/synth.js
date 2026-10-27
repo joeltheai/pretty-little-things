@@ -1709,6 +1709,7 @@
   }
   $$(".panel").forEach((panel) => {
     const bar = panel;
+    const handle = panel.querySelector(".panel-handle");
     let drag;
     let offset = { x: 0, y: 0 };
     function placePanel() {
@@ -1725,24 +1726,29 @@
         ),
         y: clamp(
           saved.y,
-          8 - rect.top,
-          Math.max(8, innerHeight - rect.height - 8) - rect.top,
+          20 - rect.top,
+          Math.max(20, innerHeight - rect.height - 8) - rect.top,
         ),
       };
       panel.style.transform = `translate(${offset.x}px, ${offset.y}px)`;
     }
     placePanel();
     bar.addEventListener("pointerdown", (e) => {
+      const fromHandle = e.target.closest(".panel-handle");
       if (
         e.button !== 0 ||
-        innerWidth < 631 ||
-        (e.target !== panel && !e.target.classList.contains("panel-content"))
+        (innerWidth < 631 && !fromHandle) ||
+        (!fromHandle &&
+          e.target !== panel &&
+          !e.target.classList.contains("panel-content"))
       )
         return;
       e.preventDefault();
       const rect = panel.getBoundingClientRect();
       drag = { x: e.clientX, y: e.clientY, ox: offset.x, oy: offset.y, rect };
       bar.setPointerCapture(e.pointerId);
+      if (fromHandle) handle.focus({ preventScroll: true });
+      panel.classList.add("dragging");
       panel.style.zIndex = ++topZ;
     });
     bar.addEventListener("pointermove", (e) => {
@@ -1759,7 +1765,7 @@
           drag.oy +
           clamp(
             e.clientY - drag.y,
-            -drag.rect.top + 8,
+            -drag.rect.top + 20,
             innerHeight - 42 - drag.rect.top,
           ),
       };
@@ -1769,8 +1775,35 @@
     ["pointerup", "pointercancel", "lostpointercapture"].forEach((t) =>
       bar.addEventListener(t, () => {
         drag = null;
+        panel.classList.remove("dragging");
       }),
     );
+    handle.addEventListener("keydown", (e) => {
+      const directions = {
+        ArrowLeft: [-1, 0],
+        ArrowRight: [1, 0],
+        ArrowUp: [0, -1],
+        ArrowDown: [0, 1],
+      };
+      const direction = directions[e.key];
+      if (!direction) return;
+      e.preventDefault();
+      const rect = panel.getBoundingClientRect();
+      const step = e.shiftKey ? 1 : 10;
+      offset.x += clamp(
+        direction[0] * step,
+        8 - rect.left,
+        innerWidth - rect.right - 8,
+      );
+      offset.y += clamp(
+        direction[1] * step,
+        20 - rect.top,
+        innerHeight - 42 - rect.top,
+      );
+      panel.style.zIndex = ++topZ;
+      panel.style.transform = `translate(${offset.x}px,${offset.y}px)`;
+      updateWires();
+    });
     window.addEventListener("resize", placePanel);
   });
   window.addEventListener("scroll", updateWires, { passive: true });

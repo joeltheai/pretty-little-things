@@ -202,6 +202,40 @@ svg {
 .panel-content {
   padding: 11px;
 }
+.panel-handle {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 42px;
+  height: 12px;
+  padding: 0;
+  border-color: #3d3d3d;
+  border-bottom: 0;
+  border-radius: 3px 3px 0 0;
+  background: #020202;
+  cursor: grab;
+  touch-action: none;
+}
+.panel-handle::before {
+  content: "";
+  position: absolute;
+  inset: -6px 0;
+}
+.panel-handle::after {
+  content: "";
+  position: absolute;
+  top: 5px;
+  left: 12px;
+  width: 16px;
+  height: 1px;
+  background: #999;
+  pointer-events: none;
+}
+.panel.dragging .panel-handle {
+  cursor: grabbing;
+  border-color: #fff;
+}
 .chord-panel {
   margin-top: 20px;
 }
