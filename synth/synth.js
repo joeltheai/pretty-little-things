@@ -49,6 +49,7 @@
   let playing = false,
     starting = false,
     bypass = false,
+    retrigger = false,
     timer = null,
     generation = 0;
   let bpm = 112,
@@ -662,6 +663,7 @@
       );
     });
     if (playing && bypass) holdChord();
+    else if (playing && retrigger) restart();
     if (audition && !playing) auditionChord();
   }
   function chooseChord(e) {
@@ -998,6 +1000,10 @@
       });
       markCustom();
     }
+  });
+  $("#retrigger").addEventListener("click", () => {
+    retrigger = !retrigger;
+    $("#retrigger").setAttribute("aria-pressed", String(retrigger));
   });
   $("#randomize").addEventListener("click", () => {
     const lane = activeLane();
