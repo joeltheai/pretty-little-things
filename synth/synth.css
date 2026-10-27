@@ -107,6 +107,7 @@ svg {
   display: none !important;
 }
 #garden,
+#fireworks,
 #rain-layer,
 .wires {
   position: fixed;
@@ -118,6 +119,9 @@ svg {
 #rain-layer {
   z-index: 0;
   overflow: hidden;
+}
+#fireworks {
+  z-index: 0;
 }
 #rain {
   display: block;
