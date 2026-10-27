@@ -535,8 +535,7 @@
       `${state.voices} unison voices, plus or minus ${Number(state.detune.toFixed(2))} cents`,
     );
     $("#detune-out").textContent = `±${formatCents(state.detune)}`;
-    $("#voice-less").disabled = state.voices <= 1;
-    $("#voice-more").disabled = state.voices >= 7;
+    $("#voices-out").textContent = state.voices;
   }
   function retuneVoices() {
     if (!ctx) return;
@@ -559,8 +558,20 @@
   function initUnison() {
     ["voices", "detune"].forEach((id) => {
       const input = $(`#${id}`),
+        slider = $(`#${id}-control`),
         [min, max] = definitions[id];
       input.value = state[id];
+      const amount = () =>
+        id === "detune"
+          ? detuneControlAmount(state[id])
+          : (state[id] - min) / (max - min);
+      const setAmount = (value) =>
+        setControl(
+          id,
+          id === "detune"
+            ? detuneFromControl(value)
+            : min + value * (max - min),
+        );
       const sync = () => {
         const number = Number(input.value);
         state[id] = clamp(
@@ -583,6 +594,7 @@
           id === "voices"
             ? `${state[id]} unison voices`
             : `±${formatCents(state[id])} detune`;
+        slider.style.setProperty("--slider-position", amount());
         drawUnison();
         drawWave();
         if (id === "detune") retuneVoices();
@@ -590,83 +602,61 @@
       input.addEventListener("input", sync);
       input.addEventListener("change", sync);
       syncControls.push(sync);
-    });
-    $("#voice-less").addEventListener("click", () =>
-      setControl("voices", state.voices - 1),
-    );
-    $("#voice-more").addEventListener("click", () =>
-      setControl("voices", state.voices + 1),
-    );
-    $("#detune").addEventListener("keydown", (e) => {
-      const directions = {
-        ArrowLeft: -1,
-        ArrowDown: -1,
-        ArrowRight: 1,
-        ArrowUp: 1,
-        PageDown: -10,
-        PageUp: 10,
-      };
-      if (!(e.key in directions) && e.key !== "Home" && e.key !== "End") return;
-      e.preventDefault();
-      setControl(
-        "detune",
-        e.key === "Home"
-          ? 0
-          : e.key === "End"
-            ? DETUNE_RANGE_CENTS
-            : state.detune + directions[e.key] * (e.shiftKey ? 0.01 : 0.1),
+      input.addEventListener("keydown", (e) => {
+        const directions = {
+          ArrowLeft: -1,
+          ArrowDown: -1,
+          ArrowRight: 1,
+          ArrowUp: 1,
+          PageDown: -10,
+          PageUp: 10,
+        };
+        if (!(e.key in directions) && e.key !== "Home" && e.key !== "End")
+          return;
+        e.preventDefault();
+        const step = id === "voices" ? 1 : e.shiftKey ? 0.01 : 0.1;
+        setControl(
+          id,
+          e.key === "Home"
+            ? min
+            : e.key === "End"
+              ? max
+              : state[id] + directions[e.key] * step,
+        );
+      });
+      let drag = null;
+      input.addEventListener("pointerdown", (e) => {
+        if (e.button !== 0) return;
+        e.preventDefault();
+        input.focus();
+        input.setPointerCapture(e.pointerId);
+        const rect = input.getBoundingClientRect();
+        drag = {
+          y: e.clientY,
+          amount: e.shiftKey
+            ? amount()
+            : clamp((rect.bottom - 5 - e.clientY) / (rect.height - 10), 0, 1),
+        };
+        setAmount(drag.amount);
+      });
+      input.addEventListener("pointermove", (e) => {
+        if (!drag) return;
+        const height = input.getBoundingClientRect().height - 10;
+        drag.amount = clamp(
+          drag.amount +
+            ((drag.y - e.clientY) / height) * (e.shiftKey ? 0.1 : 1),
+          0,
+          1,
+        );
+        drag.y = e.clientY;
+        setAmount(drag.amount);
+      });
+      ["pointerup", "pointercancel", "lostpointercapture"].forEach((type) =>
+        input.addEventListener(type, () => {
+          drag = null;
+        }),
       );
-    });
-    const field = $("#unison-spread");
-    let drag = null;
-    field.addEventListener("pointerdown", (e) => {
-      if (e.button !== 0) return;
-      e.preventDefault();
-      $("#detune").focus();
-      field.setPointerCapture(e.pointerId);
-      drag = {
-        x: e.clientX,
-        y: e.clientY,
-        amount: detuneControlAmount(state.detune),
-        side:
-          e.clientX < field.getBoundingClientRect().left + field.clientWidth / 2
-            ? -1
-            : 1,
-        axis: null,
-      };
-    });
-    field.addEventListener("pointermove", (e) => {
-      if (!drag) return;
-      const dx = e.clientX - drag.x,
-        dy = e.clientY - drag.y;
-      if (!drag.axis && Math.hypot(dx, dy) >= 1)
-        drag.axis = Math.abs(dx) >= Math.abs(dy) ? "horizontal" : "vertical";
-      if (!drag.axis) return;
-      field.dataset.axis = drag.axis;
-      const movement = drag.axis === "horizontal" ? dx * drag.side : -dy;
-      drag.amount = clamp(
-        drag.amount +
-          movement /
-            (field.getBoundingClientRect().width *
-              0.41 *
-              (e.shiftKey ? 10 : 1)),
-        0,
-        1,
-      );
-      drag.x = e.clientX;
-      drag.y = e.clientY;
-      setControl("detune", detuneFromControl(drag.amount));
-    });
-    const end = () => {
-      if (!drag) return;
-      drag = null;
-      delete field.dataset.axis;
-    };
-    ["pointerup", "pointercancel", "lostpointercapture"].forEach((type) =>
-      field.addEventListener(type, end),
-    );
-    field.addEventListener("dblclick", () => {
-      setControl("detune", defaults.detune);
+      input.addEventListener("dblclick", () => setControl(id, defaults[id]));
     });
   }
   const defaults = { ...state };

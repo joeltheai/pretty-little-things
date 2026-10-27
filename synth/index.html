@@ -269,11 +269,23 @@
           </div>
           <div class="osc-row">
             <div class="unison-control">
-              <div
-                id="unison-spread"
-                class="unison-spread"
-                title="Drag to detune. Shift for fine control; double-click to reset detune."
-              >
+              <div class="vertical-control" id="voices-control">
+                <span class="vertical-track" aria-hidden="true"
+                  ><span class="vertical-thumb"></span
+                ></span>
+                <input
+                  id="voices"
+                  type="range"
+                  min="1"
+                  max="7"
+                  step="1"
+                  value="7"
+                  aria-label="Unison voices"
+                  aria-orientation="vertical"
+                  title="Voices"
+                />
+              </div>
+              <div id="unison-spread" class="unison-spread">
                 <svg
                   id="unison-display"
                   viewBox="0 0 200 44"
@@ -284,50 +296,33 @@
                   <path class="unison-guide" d="M100 5V32 M18 32H182" />
                   <g id="unison-lines"></g>
                 </svg>
+                <output
+                  id="voices-out"
+                  class="unison-readout voice-readout"
+                  for="voices"
+                ></output>
+                <output
+                  id="detune-out"
+                  class="unison-readout detune-readout"
+                  for="detune"
+                ></output>
+              </div>
+              <div class="vertical-control" id="detune-control">
+                <span class="vertical-track" aria-hidden="true"
+                  ><span class="vertical-thumb"></span
+                ></span>
                 <input
                   id="detune"
-                  class="visually-hidden"
                   type="range"
                   min="0"
                   max="50"
                   step="any"
                   value="4"
                   aria-label="Detune in cents"
+                  aria-orientation="vertical"
+                  title="Detune"
                 />
               </div>
-              <div class="voice-count">
-                <button
-                  id="voice-less"
-                  type="button"
-                  aria-label="Fewer unison voices"
-                  title="Fewer voices"
-                >
-                  −
-                </button>
-                <input
-                  id="voices"
-                  type="number"
-                  min="1"
-                  max="7"
-                  step="1"
-                  value="7"
-                  aria-label="Unison voice count"
-                  title="Unison voices"
-                />
-                <button
-                  id="voice-more"
-                  type="button"
-                  aria-label="More unison voices"
-                  title="More voices"
-                >
-                  +
-                </button>
-              </div>
-              <output
-                id="detune-out"
-                class="detune-readout"
-                for="detune"
-              ></output>
             </div>
             <div class="knob-row" id="osc-controls"></div>
           </div>

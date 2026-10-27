@@ -586,23 +586,24 @@ svg {
   gap: 13px;
 }
 .unison-control {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr) 14px;
+  gap: 2px;
   position: relative;
   flex: 1;
   min-width: 0;
   height: 46px;
   border: 1px solid #292929;
   border-radius: 2px;
+  padding: 1px 2px;
 }
 .unison-control:focus-within {
   border-color: #999;
 }
 .unison-spread {
+  position: relative;
   height: 100%;
-  cursor: ew-resize;
-  touch-action: none;
-}
-.unison-spread[data-axis="vertical"] {
-  cursor: ns-resize;
+  min-width: 0;
 }
 #unison-display {
   display: block;
@@ -620,64 +621,65 @@ svg {
   stroke-width: 1;
   stroke-linecap: round;
 }
-.visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-  border: 0;
+.vertical-control {
+  position: relative;
+  height: 100%;
+  touch-action: none;
 }
-.voice-count {
+.vertical-control input[type="range"] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  writing-mode: vertical-lr;
+  direction: rtl;
+  opacity: 0;
+  cursor: ns-resize;
+  touch-action: none;
+}
+.vertical-track {
+  position: absolute;
+  top: 5px;
+  bottom: 5px;
+  left: 50%;
+  width: 1px;
+  background: #444;
+  pointer-events: none;
+}
+.vertical-thumb {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--slider-position, 0) * 100%);
+  transform: translate(-50%, 50%);
+  width: 5px;
+  height: 7px;
+  background: #bcbcbc;
+  border-radius: 1px;
+}
+.vertical-control:hover .vertical-thumb,
+.vertical-control:focus-within .vertical-thumb {
+  background: white;
+}
+.vertical-control:focus-within .vertical-track {
+  background: #999;
+}
+.unison-readout {
   position: absolute;
   bottom: 1px;
-  left: 3px;
-  display: flex;
-  align-items: center;
-  height: 12px;
-}
-.voice-count button {
-  width: 14px;
-  height: 12px;
-  border: 0;
-  padding: 0;
-  font-size: 9px;
-  line-height: 1;
-  color: #888;
-}
-.voice-count button:disabled {
-  opacity: 0.3;
-  cursor: default;
-}
-.voice-count input {
-  width: 16px;
-  height: 12px;
-  padding: 0;
-  border: 0;
-  text-align: center;
-  font-size: 8px;
-  appearance: textfield;
-  -moz-appearance: textfield;
-}
-.voice-count input::-webkit-inner-spin-button,
-.voice-count input::-webkit-outer-spin-button {
-  appearance: none;
-  margin: 0;
-}
-.detune-readout {
-  position: absolute;
-  bottom: 2px;
-  right: 5px;
   opacity: 0;
   pointer-events: none;
   color: #999;
   font-size: 7px;
 }
-.unison-control:hover .detune-readout,
-.unison-control:focus-within .detune-readout {
+.voice-readout {
+  left: 2px;
+}
+.detune-readout {
+  right: 2px;
+}
+.unison-control:hover .unison-readout,
+.unison-control:focus-within .unison-readout {
   opacity: 1;
 }
 .knob-row {
