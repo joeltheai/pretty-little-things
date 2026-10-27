@@ -111,6 +111,10 @@
           return {
             kind,
             group: i % 7,
+            densityThreshold:
+              hero || ["fern", "reed", "sprig"].includes(kind)
+                ? -1
+                : 0.03 + r(17) * 0.87,
             u: hero
               ? anchors[i]
               : meadow
@@ -361,8 +365,14 @@
       this.fillBlack();
     }
 
-    plantFrame(plant) {
-      const scale = this.worldScale,
+    plantPresence(plant) {
+      const density = clamp((this.controls.voices.value - 1) / 6, 0, 1);
+      const growth = clamp((density - plant.densityThreshold) / 0.1, 0, 1);
+      return growth * growth * (3 - 2 * growth);
+    }
+
+    plantFrame(plant, presence = 1) {
+      const scale = this.worldScale * presence,
         h = plant.height.value * scale;
       const x =
         ((plant.u - 0.5) * this.width * (this.cameraDistance + plant.depth)) /
@@ -373,8 +383,9 @@
         plant.depth + plant.swayZ.value * scale * t * t,
       ];
       const opacity =
-        clamp(0.62 - plant.depth / 2400, 0.13, 0.6) +
-        this.energy[plant.group].value * 0.065;
+        (clamp(0.62 - plant.depth / 2400, 0.13, 0.6) +
+          this.energy[plant.group].value * 0.065) *
+        presence;
       return { at, h, scale, opacity, x };
     }
 
@@ -687,8 +698,8 @@
       this.foliage(plant, frame, 2);
     }
 
-    drawPlant(plant) {
-      const frame = this.plantFrame(plant);
+    drawPlant(plant, presence = 1) {
+      const frame = this.plantFrame(plant, presence);
       const shadow = Array.from({ length: 21 }, (_, i) => [
         frame.x + Math.cos((i / 20) * TAU) * 16,
         0,
@@ -964,6 +975,8 @@
       // Interleave grass and plants by depth; distant blades cannot show through petals.
       let cursor = 0;
       this.plants.forEach((plant) => {
+        const presence = this.plantPresence(plant);
+        if (presence <= 0) return;
         const start = cursor;
         while (
           cursor < this.visibleGrass.length &&
@@ -971,7 +984,7 @@
         )
           cursor++;
         this.drawGrass(start, cursor);
-        this.drawPlant(plant);
+        this.drawPlant(plant, presence);
       });
       this.drawGrass(cursor);
       this.drawRain(dt);
