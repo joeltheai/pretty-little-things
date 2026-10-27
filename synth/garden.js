@@ -102,11 +102,11 @@
           const baseHeight = hero
             ? i === 0 || i === 6
               ? 310
-              : 160 + r(1) * 65
+              : 170 + r(1) * 150
             : meadow
-              ? 85 + r(1) * 110
+              ? 90 + r(1) * 120 + (r(15) < 0.28 ? 140 + r(16) * 60 : 0)
               : 100 + r(1) * 160;
-          const baseRadius = meadow ? 12 + r(2) * 20 : 20 + r(2) * 16;
+          const baseRadius = meadow ? 20 + r(2) * 30 : 32 + r(2) * 24;
           const pitch = (kind === "poppy" ? 0.55 : -0.25) + (r(3) - 0.5) * 0.75;
           return {
             kind,
@@ -133,7 +133,7 @@
             baseYaw: (r(6) - 0.5) * 1.5,
             roll: (r(7) - 0.5) * 1.5,
             phase: r(8) * TAU,
-            frequency: 0.42 + r(9) * 0.3,
+            frequency: 1.05 + r(9) * 0.7,
             lean: (r(10) - 0.5) * 0.24,
             petals:
               kind === "daisy"
@@ -165,6 +165,11 @@
       this.cameraHeight = (this.cameraDistance * 0.32) / 0.95;
       this.horizon = height * 0.66;
       this.worldScale = clamp(width / 1000, 0.58, 1);
+      const grassLimit = Math.min(this.grass.length, Math.ceil(width * 0.7));
+      this.visibleGrass = Array.from(
+        { length: grassLimit },
+        (_, i) => this.grass[Math.floor((i / grassLimit) * this.grass.length)],
+      );
       [this.canvas, this.rainCanvas, this.fireworksCanvas].forEach((canvas) => {
         canvas.width = Math.round(width * dpr);
         canvas.height = Math.round(height * dpr);
@@ -199,18 +204,23 @@
       if (!this.motion) return;
       this.time += dt;
       Object.entries(this.controls).forEach(([key, body]) =>
-        follow(body, this.state[key], dt, key === "voices" ? 3.5 : 4),
+        follow(
+          body,
+          this.state[key],
+          dt,
+          key === "voices" ? 36 : key === "detune" ? 14 : 8,
+        ),
       );
       const total = levels.reduce((sum, level) => sum + level, 0);
       const global = clamp(total * 0.6, 0, 1.7);
-      follow(this.field, global, dt, 5);
+      follow(this.field, global, dt, 8);
       this.energy.forEach((body, i) => {
         const target = clamp(
           global * 0.42 + levels[i] * 0.85 + this.pulses[i] * 0.2,
           0,
           1.8,
         );
-        follow(body, target, dt, 5);
+        follow(body, target, dt, 8);
         this.pulses[i] *= Math.exp(-dt * 1.5);
       });
       this.rainActivity *= Math.exp(-dt * 1.25);
@@ -226,50 +236,52 @@
         // Fixed-frequency waves share a wind field; changing sound never resets their phase.
         const wind =
           Math.sin(this.time * plant.frequency + plant.phase) * 0.65 +
-          Math.sin(this.time * 0.89 + plant.phase * 1.7) * 0.22 +
-          Math.sin(this.time * 0.19 + plant.u * 3) * 0.18;
-        const force = (6 + detune * 17 + energy * 3) * (plant.baseHeight / 200);
+          Math.sin(this.time * 1.8 + plant.phase * 1.7) * 0.22 +
+          Math.sin(this.time * 0.55 + plant.u * 3) * 0.18;
+        const force =
+          (20 + detune * 30 + energy * 15) * (plant.baseHeight / 200);
         follow(
           plant.swayX,
-          wind * force + this.storm.value * 5,
+          wind * force + this.storm.value * 8,
           dt,
-          2.6 + plant.age,
+          6.5 + plant.age * 2,
         );
         follow(
           plant.swayZ,
-          Math.sin(this.time * 0.39 + plant.phase) * (3 + detune * 5),
+          Math.sin(this.time * 0.9 + plant.phase) *
+            (9 + detune * 12 + energy * 4),
           dt,
-          2.8,
+          6,
         );
         follow(
           plant.height,
           plant.baseHeight *
-            (0.88 + (this.controls.sub.value / 100) * 0.42 + energy * 0.035),
+            (0.88 + (this.controls.sub.value / 100) * 0.42 + energy * 0.065),
           dt,
-          3.2,
+          6,
         );
         follow(
           plant.radius,
           plant.baseRadius *
-            (0.9 + this.controls.sustain.value * 0.25 + energy * 0.13),
+            (0.9 + this.controls.sustain.value * 0.25 + energy * 0.22),
           dt,
-          3.5,
+          8,
         );
         follow(
           plant.pitch,
           plant.basePitch +
             plant.swayX.value * 0.003 +
-            Math.sin(this.time * 0.31 + plant.phase) * 0.055,
+            Math.sin(this.time * 0.9 + plant.phase) * 0.085,
           dt,
-          2.8,
+          6,
         );
         follow(
           plant.yaw,
           plant.baseYaw +
-            Math.sin(this.time * 0.23 + plant.phase) * 0.09 +
+            Math.sin(this.time * 0.7 + plant.phase) * 0.12 +
             plant.swayZ.value * 0.007,
           dt,
-          2.6,
+          6,
         );
       });
     }
@@ -283,6 +295,17 @@
       };
     }
 
+    fillBlack() {
+      const ctx = this.garden;
+      ctx.save();
+      // Silhouettes always occlude, independently of depth/outline opacity.
+      ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = "source-over";
+      ctx.fillStyle = "#000";
+      ctx.fill();
+      ctx.restore();
+    }
+
     stroke(points, alpha, width = 0.8, closed = false, fill = false) {
       if (!points.length) return;
       const ctx = this.garden;
@@ -293,16 +316,49 @@
         else ctx.moveTo(p.x, p.y);
       });
       if (closed) ctx.closePath();
-      if (fill) {
-        ctx.fillStyle =
-          typeof fill === "number" ? `rgba(0,0,0,${fill})` : "#000";
-        ctx.fill();
-      }
+      if (fill) this.fillBlack();
       ctx.strokeStyle = `rgba(255,255,255,${clamp(alpha * Math.sqrt(this.state.level / 100), 0, 0.9)})`;
       ctx.lineWidth = width;
       ctx.lineJoin = "round";
       ctx.lineCap = "round";
       ctx.stroke();
+    }
+
+    mask(points) {
+      const projected = points
+        .map((point) => this.project(point))
+        .sort((a, b) => a.x - b.x || a.y - b.y);
+      const cross = (o, a, b) =>
+        (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+      const lower = [],
+        upper = [];
+      projected.forEach((point) => {
+        while (
+          lower.length > 1 &&
+          cross(lower.at(-2), lower.at(-1), point) <= 0
+        )
+          lower.pop();
+        lower.push(point);
+      });
+      for (let i = projected.length - 1; i >= 0; i--) {
+        const point = projected[i];
+        while (
+          upper.length > 1 &&
+          cross(upper.at(-2), upper.at(-1), point) <= 0
+        )
+          upper.pop();
+        upper.push(point);
+      }
+      const hull = lower.slice(0, -1).concat(upper.slice(0, -1));
+      if (hull.length < 3) return;
+      const ctx = this.garden;
+      ctx.beginPath();
+      hull.forEach((point, i) => {
+        if (i) ctx.lineTo(point.x, point.y);
+        else ctx.moveTo(point.x, point.y);
+      });
+      ctx.closePath();
+      this.fillBlack();
     }
 
     plantFrame(plant) {
@@ -378,7 +434,7 @@
           side = i % 2 ? 1 : -1;
         const length = (25 + plant.baseRadius * 0.45) * frame.scale * opening;
         const yaw = plant.leafYaw + i * 0.8;
-        const flutter = Math.sin(this.time * 0.7 + plant.phase + i) * 0.06;
+        const flutter = Math.sin(this.time * 1.35 + plant.phase + i) * 0.08;
         this.leaf(
           frame.at(t),
           [
@@ -406,8 +462,8 @@
         const angle = (petal / count) * TAU;
         const fade = clamp(count - petal, 0, 1);
         const flutter =
-          Math.sin(this.time * 0.73 + plant.phase + petal * 0.9) *
-          (0.018 + energy * 0.009);
+          Math.sin(this.time * 1.2 + plant.phase + petal * 0.9) *
+          (0.035 + energy * 0.016);
         const reach =
           length * (1 + flutter + this.random(petal + plant.phase) * 0.06);
         const points = [];
@@ -443,7 +499,7 @@
           frame.opacity * petal.fade * lighting,
           0.85,
           true,
-          petal.fade,
+          true,
         );
         if (plant.kind !== "daisy") {
           const vein = Array.from({ length: 7 }, (_, i) => {
@@ -488,7 +544,7 @@
           y * radius,
           r * Math.sin(angle) * radius,
         ]);
-        return { tip, z: tip[2], angle };
+        return { tip, z: tip[2] };
       }).sort((a, b) => b.z - a.z);
       seeds.forEach((seed) => {
         const alpha = frame.opacity * (seed.z < center[2] ? 0.9 : 0.36);
@@ -526,39 +582,54 @@
           0.8,
         );
         const h = plant.radius.value * frame.scale * 0.8;
-        for (let meridian = 0; meridian < 5; meridian++) {
-          const angle = (meridian / 5) * TAU;
-          const contour = Array.from({ length: 10 }, (_, i) => {
-            const t = i / 9,
-              r = (3 + t * t * 10) * frame.scale;
-            return this.headTransform(
-              plant,
-              center,
-              [Math.cos(angle) * r, -h * t, Math.sin(angle) * r],
-              0.2,
-            );
-          });
-          this.stroke(
-            contour,
-            frame.opacity * (0.5 + Math.cos(angle) * 0.22),
-            0.72,
+        const bellScale = (frame.scale * plant.radius.value) / 26;
+        const contours = [];
+        for (let meridian = 0; meridian < 6; meridian++) {
+          const angle = (meridian / 6) * TAU;
+          contours.push(
+            Array.from({ length: 10 }, (_, i) => {
+              const t = i / 9,
+                r = (3 + t * t * 10) * bellScale;
+              return this.headTransform(
+                plant,
+                center,
+                [Math.cos(angle) * r, -h * t, Math.sin(angle) * r],
+                0.2,
+              );
+            }),
           );
         }
         const rim = Array.from({ length: 31 }, (_, i) => {
           const angle = (i / 30) * TAU,
-            radius = (13 + Math.cos(angle * 5) * 1.3) * frame.scale;
+            radius = (13 + Math.cos(angle * 5) * 1.3) * bellScale;
           return this.headTransform(
             plant,
             center,
             [
               Math.cos(angle) * radius,
-              -h + Math.cos(angle * 5) * frame.scale,
+              -h + Math.cos(angle * 5) * bellScale,
               Math.sin(angle) * radius,
             ],
             0.2,
           );
         });
-        this.stroke(rim, frame.opacity, 0.8, true);
+        this.mask([...contours.flat(), ...rim]);
+        const edges = contours.map((points) => ({
+          points,
+          x: this.project(points.at(-1)).x,
+          z: points.reduce((sum, point) => sum + point[2], 0) / points.length,
+        }));
+        const left = edges.reduce((a, b) => (a.x < b.x ? a : b)),
+          right = edges.reduce((a, b) => (a.x > b.x ? a : b));
+        this.stroke(left.points, frame.opacity, 0.8);
+        this.stroke(right.points, frame.opacity, 0.8);
+        edges
+          .sort((a, b) => a.z - b.z)
+          .slice(0, 2)
+          .forEach((edge) =>
+            this.stroke(edge.points, frame.opacity * 0.35, 0.6),
+          );
+        this.stroke(rim, frame.opacity, 0.8, true, true);
       }
     }
 
@@ -640,15 +711,14 @@
       }
     }
 
-    drawGrass() {
+    drawGrass(from = 0, to = this.visibleGrass.length) {
       const ctx = this.garden;
-      const limit = Math.min(this.grass.length, Math.ceil(this.width * 0.7));
       const scale = this.worldScale,
         brightness = Math.sqrt(this.state.level / 100);
       let band = -1;
       // Batch nearby depths into a few paths so the denser field stays smooth.
-      for (let i = 0; i < limit; i++) {
-        const tuft = this.grass[Math.floor((i / limit) * this.grass.length)];
+      for (let i = from; i < to; i++) {
+        const tuft = this.visibleGrass[i];
         const depth = tuft.depth,
           nextBand = clamp(Math.floor((depth + 160) / 280), 0, 5);
         if (nextBand !== band) {
@@ -765,30 +835,53 @@
       });
     }
 
-    chordChange(root, minor, delay = 0) {
+    launchFirework(root, minor) {
       if (!this.motion) return;
-      const radius = Math.min(this.width * 0.19, 75 + Math.random() * 48);
+      const radius = Math.min(
+        this.width * 0.42,
+        this.height * 0.36,
+        190 + Math.random() * 100,
+      );
       const panels = [...document.querySelectorAll(".panel")].map((panel) =>
         panel.getBoundingClientRect(),
       );
-      let x = 0.25,
-        y = 0.2;
-      for (let attempt = 0; attempt < 12; attempt++) {
-        x = 0.1 + Math.random() * 0.8;
-        y = 0.12 + Math.random() * 0.26;
-        if (
-          !panels.some(
-            (rect) =>
-              x * this.width > rect.left - radius * 0.6 &&
-              x * this.width < rect.right + radius * 0.6 &&
-              y * this.height > rect.top - radius * 0.4 &&
-              y * this.height < rect.bottom + radius * 0.4,
+      let x = 0.5,
+        y = 0.25,
+        best = -Infinity;
+      const visible = (px, py) =>
+        px > 0 &&
+        px < this.width &&
+        py > 0 &&
+        py < this.height &&
+        !panels.some(
+          (rect) =>
+            px > rect.left &&
+            px < rect.right &&
+            py > rect.top &&
+            py < rect.bottom,
+        );
+      for (let attempt = 0; attempt < 18; attempt++) {
+        const cx = 0.12 + Math.random() * 0.76,
+          cy = 0.2 + Math.random() * 0.26;
+        let score = visible(cx * this.width, cy * this.height) ? 10 : 0;
+        for (let i = 0; i < 16; i++) {
+          const angle = (i / 16) * TAU;
+          if (
+            visible(
+              cx * this.width + Math.cos(angle) * radius * 0.75,
+              cy * this.height + Math.sin(angle) * radius * 0.75,
+            )
           )
-        )
-          break;
+            score++;
+        }
+        if (score > best) {
+          x = cx;
+          y = cy;
+          best = score;
+        }
       }
       const type = Math.floor(Math.random() * 3),
-        count = 40 + Math.floor(Math.random() * 24);
+        count = 90 + Math.floor(Math.random() * 42);
       const particles = Array.from({ length: count }, (_, i) => {
         const angle = (i / count) * TAU + Math.random() * 0.08;
         const depth = type === 1 ? 0 : Math.random() * 1.8 - 0.9;
@@ -803,15 +896,14 @@
         };
       });
       this.fireworks.push({
-        born: performance.now() + delay * 1000,
+        born: performance.now(),
         x,
         y,
         radius,
         type,
         root,
         minor,
-        launch: 0.32 + Math.random() * 0.22,
-        duration: 1.8 + Math.random() * 0.5,
+        duration: 2.1 + Math.random() * 0.6,
         particles,
       });
       if (this.fireworks.length > 8) this.fireworks.shift();
@@ -824,7 +916,7 @@
       for (let i = this.fireworks.length - 1; i >= 0; i--) {
         const firework = this.fireworks[i];
         const elapsed = (now - firework.born) / 1000;
-        if (elapsed > firework.launch + firework.duration) {
+        if (elapsed > firework.duration) {
           this.fireworks.splice(i, 1);
           continue;
         }
@@ -833,19 +925,7 @@
           y = firework.y * this.height;
         const brightness = Math.sqrt(this.state.level / 100);
         ctx.lineCap = "round";
-        if (elapsed < firework.launch) {
-          const t = elapsed / firework.launch,
-            ease = 1 - (1 - t) ** 2;
-          const tailY = this.height * 0.99 + (y - this.height * 0.99) * ease;
-          ctx.strokeStyle = `rgba(255,255,255,${0.38 * brightness})`;
-          ctx.lineWidth = 0.8;
-          ctx.beginPath();
-          ctx.moveTo(x - Math.sin(t * 5) * 3, tailY + 17);
-          ctx.lineTo(x, tailY);
-          ctx.stroke();
-          continue;
-        }
-        const t = elapsed - firework.launch;
+        const t = elapsed;
         const fade = Math.min(1, t / 0.09) * (1 - t / firework.duration) ** 1.4;
         firework.particles.forEach((particle) => {
           const position = (age) => {
@@ -868,7 +948,7 @@
             fade *
             brightness;
           ctx.strokeStyle = `rgba(255,255,255,${light})`;
-          ctx.lineWidth = particle.depth < 0 ? 1 : 0.65;
+          ctx.lineWidth = particle.depth < 0 ? 1.2 : 0.8;
           ctx.beginPath();
           ctx.moveTo(tail[0], tail[1]);
           ctx.lineTo(p[0], p[1]);
@@ -881,8 +961,19 @@
       this.update(dt, levels);
       this.garden.clearRect(0, 0, this.width, this.height);
       this.drawMotes();
-      this.plants.forEach((plant) => this.drawPlant(plant));
-      this.drawGrass();
+      // Interleave grass and plants by depth; distant blades cannot show through petals.
+      let cursor = 0;
+      this.plants.forEach((plant) => {
+        const start = cursor;
+        while (
+          cursor < this.visibleGrass.length &&
+          this.visibleGrass[cursor].depth > plant.depth
+        )
+          cursor++;
+        this.drawGrass(start, cursor);
+        this.drawPlant(plant);
+      });
+      this.drawGrass(cursor);
       this.drawRain(dt);
       this.drawFireworks();
     }

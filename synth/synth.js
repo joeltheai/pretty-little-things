@@ -208,7 +208,7 @@
   const heldKeys = new Map();
   let lastVisual = null;
   let gardenScene = null,
-    lastVisualChord = null;
+    lastFireworkBar = -1;
   const progression = {
     chords: [],
     capturing: false,
@@ -1043,15 +1043,6 @@
   function updateChord(audition = false, syncOnly = false) {
     const extension = $("#extension").value;
     chordNotes = buildChordNotes(chordConfig());
-    const visualChord = chordNotes.join(",");
-    if (lastVisualChord !== null && visualChord !== lastVisualChord) {
-      const delay =
-        playing && progression.enabled
-          ? Math.max(0, anchor - ctx.currentTime)
-          : 0;
-      gardenScene?.chordChange(chordRoot, chordMinor, delay);
-    }
-    lastVisualChord = visualChord;
     $("#chord-name").textContent =
       noteNames[chordRoot] +
       (extension === "seventh"
@@ -1568,6 +1559,7 @@
     updateTransport();
   }
   function stop() {
+    lastFireworkBar = -1;
     generation++;
     auditionSerial++;
     progression.index = -1;
@@ -1594,6 +1586,7 @@
     liveStep = -1;
     updatePlayheads();
     anchor = ctx.currentTime + 0.035;
+    lastFireworkBar = -1;
     if (progression.enabled) applyProgressionChord(0);
     if (bypass && !progression.enabled) holdChord();
     else schedule();
@@ -1835,12 +1828,21 @@
     }
     scopeCtx.stroke();
   }
+  function updateBarFirework(now) {
+    if (!playing || now < anchor) return;
+    const bar = Math.floor((((now - anchor) * bpm) / 60 + 1e-7) / 4);
+    if (bar !== lastFireworkBar) {
+      lastFireworkBar = bar;
+      gardenScene.launchFirework(chordRoot, chordMinor);
+    }
+  }
   function animate(timestamp) {
     requestAnimationFrame(animate);
     const delta = Math.min(0.05, Math.max(0, (timestamp - lastFrame) / 1000));
     lastFrame = timestamp;
     const now = ctx?.currentTime || 0;
     updateProgression(now);
+    updateBarFirework(now);
     let current;
     while (scheduledSteps.length && scheduledSteps[0].when <= now)
       current = scheduledSteps.shift();
