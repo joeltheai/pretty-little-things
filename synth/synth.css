@@ -262,6 +262,23 @@ svg {
   stroke-width: 0.8;
   cursor: pointer;
 }
+#wheel,
+#wheel * {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+#wheel path[data-root]:focus {
+  outline: none;
+}
+#wheel path[data-root]:focus-visible {
+  stroke: #fff;
+  stroke-width: 2.5;
+}
+#wheel path.selected:focus-visible {
+  stroke: #777;
+  stroke-dasharray: 3 2;
+}
 #wheel path:hover {
   fill: #252525;
   stroke: white;

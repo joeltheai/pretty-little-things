@@ -11,20 +11,154 @@
     );
     return el;
   };
-  const state = {
-    wave: "sawtooth",
-    morph: 20,
-    voices: 3,
-    detune: 14,
-    sub: 12,
-    attack: 0.035,
-    decay: 0.3,
-    sustain: 0.48,
-    release: 0.7,
-    tone: 64,
-    resonance: 12,
-    level: 55,
+  const INITIAL_STATE = {
+    synth: {
+      wave: "sawtooth",
+      voices: 7,
+      detune: 4,
+      morph: 20,
+      sub: 12,
+      attack: 0.005,
+      decay: 0.24,
+      sustain: 0.08,
+      release: 0.42,
+      tone: 69,
+      resonance: 12,
+      level: 55,
+    },
+    transport: {
+      bpm: 122,
+      rate: 0.25,
+      swing: 0,
+    },
+    chord: {
+      root: 0,
+      minor: false,
+      extension: "ninth",
+      inversion: 0,
+    },
+    arp: {
+      pattern: "custom",
+      selectedLane: "note",
+      linked: true,
+      retrigger: false,
+      bypass: false,
+      lanes: {
+        note: {
+          length: 8,
+          division: 1,
+          values: [1, 2, 3, 5, 4, 3, 2, 4, 1, 2, 3, 5, 4, 3, 2, 4],
+          mutes: [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+          ],
+        },
+        gate: {
+          length: 8,
+          division: 1,
+          values: [
+            72, 36, 90, 52, 64, 72, 36, 90, 52, 64, 72, 36, 90, 52, 64, 72,
+          ],
+          mutes: [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+          ],
+        },
+        velocity: {
+          length: 8,
+          division: 1,
+          values: [
+            90, 50, 68, 44, 78, 55, 65, 90, 50, 68, 44, 78, 55, 65, 90, 50,
+          ],
+          mutes: [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+          ],
+        },
+        octave: {
+          length: 8,
+          division: 1,
+          values: [0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0],
+          mutes: [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+          ],
+        },
+      },
+    },
+    motion: true,
+    layout: {
+      "chord-panel": {
+        x: -151.852,
+        y: -50.4141,
+      },
+      "arp-panel": {
+        x: -94.6641,
+        y: -45.4297,
+      },
+      "synth-panel": {
+        x: 107.617,
+        y: -160.332,
+      },
+    },
   };
+  const state = { ...INITIAL_STATE.synth };
   const noteNames = [
     "C",
     "C♯",
@@ -48,16 +182,18 @@
   let ctx, master, analyser, compressor, responseFilter, periodicWave;
   let playing = false,
     starting = false,
-    bypass = false,
-    retrigger = false,
+    bypass = INITIAL_STATE.arp.bypass,
+    retrigger = INITIAL_STATE.arp.retrigger,
     timer = null,
     generation = 0;
-  let bpm = 112,
-    rate = 0.5,
-    swing = 0,
+  let bpm = INITIAL_STATE.transport.bpm,
+    rate = INITIAL_STATE.transport.rate,
+    swing = INITIAL_STATE.transport.swing,
     anchor = 0,
     nextStep = 0;
-  let motion = !matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let motion =
+    INITIAL_STATE.motion &&
+    !matchMedia("(prefers-reduced-motion: reduce)").matches;
   const activeVoices = new Set();
   const visualNotes = [];
   const scheduledSteps = [];
@@ -586,8 +722,8 @@
   // Chord generator: circle of fifths, extensions and inversions.
   const majors = [0, 7, 2, 9, 4, 11, 6, 1, 8, 3, 10, 5],
     minors = [9, 4, 11, 6, 1, 8, 3, 10, 5, 0, 7, 2];
-  let chordRoot = 0,
-    chordMinor = false,
+  let chordRoot = INITIAL_STATE.chord.root,
+    chordMinor = INITIAL_STATE.chord.minor,
     chordNotes = [];
   function ringPath(inner, outer, start, end) {
     const p = (r, a) => [160 + Math.cos(a) * r, 160 + Math.sin(a) * r];
@@ -729,17 +865,14 @@
   ];
   const lanes = laneSpecs.map((spec) => ({
     ...spec,
-    division: 1,
-    values: Array.from(
-      { length: 16 },
-      (_, i) => spec.values[i % spec.values.length],
-    ),
-    mutes: Array(16).fill(false),
+    ...INITIAL_STATE.arp.lanes[spec.id],
+    values: [...INITIAL_STATE.arp.lanes[spec.id].values],
+    mutes: [...INITIAL_STATE.arp.lanes[spec.id].mutes],
     cells: [],
     muteButtons: [],
   }));
-  let selectedLane = "note",
-    linked = false,
+  let selectedLane = INITIAL_STATE.arp.selectedLane,
+    linked = INITIAL_STATE.arp.linked,
     liveStep = -1;
   const activeLane = () => lanes.find((lane) => lane.id === selectedLane);
 
@@ -959,7 +1092,7 @@
     );
     renderLane(lane);
   });
-  selectLane("note");
+  selectLane(selectedLane);
   $("#lane-length").addEventListener("input", (e) => {
     const length = clamp(Math.round(Number(e.target.value)), 1, 16);
     (linked ? lanes : [activeLane()]).forEach((lane) => {
@@ -1227,9 +1360,6 @@
     });
     heldKeys.clear();
   });
-  document.addEventListener("visibilitychange", () => {
-    if (document.hidden) stop();
-  });
 
   // Patch cables follow the modules, including after a drag or responsive reflow.
   let topZ = 3;
@@ -1255,6 +1385,27 @@
     const bar = panel;
     let drag;
     let offset = { x: 0, y: 0 };
+    function placePanel() {
+      offset = { x: 0, y: 0 };
+      panel.style.transform = "";
+      if (innerWidth <= 1030) return;
+      const saved = INITIAL_STATE.layout[panel.id];
+      const rect = panel.getBoundingClientRect();
+      offset = {
+        x: clamp(
+          saved.x,
+          8 - rect.left,
+          Math.max(8, innerWidth - rect.width - 8) - rect.left,
+        ),
+        y: clamp(
+          saved.y,
+          8 - rect.top,
+          Math.max(8, innerHeight - rect.height - 8) - rect.top,
+        ),
+      };
+      panel.style.transform = `translate(${offset.x}px, ${offset.y}px)`;
+    }
+    placePanel();
     bar.addEventListener("pointerdown", (e) => {
       if (
         e.button !== 0 ||
@@ -1294,10 +1445,7 @@
         drag = null;
       }),
     );
-    window.addEventListener("resize", () => {
-      offset = { x: 0, y: 0 };
-      panel.style.transform = "";
-    });
+    window.addEventListener("resize", placePanel);
   });
   window.addEventListener("scroll", updateWires, { passive: true });
   const resizeObserver = new ResizeObserver(updateWires);
@@ -1715,6 +1863,24 @@
     });
     drawScope();
   }
+  // Restore controls without firing change handlers that regenerate the saved arp.
+  Object.entries({
+    tempo: bpm,
+    rate,
+    swing,
+    extension: INITIAL_STATE.chord.extension,
+    voicing: INITIAL_STATE.chord.inversion,
+  }).forEach(([id, value]) => {
+    $(`#${id}`).value = String(value);
+  });
+  $("#tempo-out").textContent = bpm;
+  $("#swing").title = `Swing: ${Math.round(swing * 100)}%`;
+  if (INITIAL_STATE.arp.pattern === "custom") markCustom();
+  else $("#pattern").value = INITIAL_STATE.arp.pattern;
+  $("#link-lengths").setAttribute("aria-pressed", String(linked));
+  $("#retrigger").setAttribute("aria-pressed", String(retrigger));
+  $("#arp-bypass").setAttribute("aria-pressed", String(bypass));
+  $("#arp-panel").classList.toggle("bypassed", bypass);
   syncControls.forEach((sync) => sync());
   updateChord();
   updateTransport();
