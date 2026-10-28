@@ -1,5 +1,8 @@
 const EXPORT_EDGE = 1800;
 const PREVIEW_EDGE = 1500;
+const SHEET_MAX_HEIGHT = 4600;
+const MIN_CROP = 0.04;
+const HANDLE_HIT = 14;
 
 const DEFAULTS = {
   notches: 11,
@@ -20,6 +23,7 @@ const PAPERS = [
 const state = {
   image: null,
   name: "sample · dunes",
+  cropRect: { x: 0, y: 0, w: 1, h: 1 },
   notches: DEFAULTS.notches,
   hole: DEFAULTS.hole,
   margin: DEFAULTS.margin,
@@ -35,13 +39,22 @@ const metaEl = document.getElementById("meta");
 const statusEl = document.getElementById("status");
 const dropEl = document.getElementById("drop");
 const downloadButton = document.getElementById("download");
+const downloadAlt = document.getElementById("download-stamp");
 const paperWrap = document.getElementById("papers");
+const cropOpen = document.getElementById("crop-open");
+const cropModal = document.getElementById("crop-modal");
+const cropCanvas = document.getElementById("crop-canvas");
+const cropReadout = document.getElementById("crop-readout");
+const cropApply = document.getElementById("crop-apply");
+const cropDialog = document.getElementById("crop-dialog");
 
 let grainPattern = null;
 let frame = 0;
 let statusTimer = 0;
+let exporting = false;
+let editor = null;
 
-/* ---------- image helpers ---------- */
+/* ---------- sample image ---------- */
 
 function makeSampleImage() {
   const width = 1200;
@@ -118,6 +131,8 @@ function makeSampleImage() {
   return canvas;
 }
 
+/* ---------- helpers ---------- */
+
 function mulberry32(seed) {
   return function random() {
     seed |= 0;
@@ -128,13 +143,8 @@ function mulberry32(seed) {
   };
 }
 
-function drawCover(ctx, image, dx, dy, dw, dh) {
-  const scale = Math.max(dw / image.width, dh / image.height);
-  const sw = dw / scale;
-  const sh = dh / scale;
-  const sx = (image.width - sw) / 2;
-  const sy = (image.height - sh) / 2;
-  ctx.drawImage(image, sx, sy, sw, sh, dx, dy, dw, dh);
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
 }
 
 function isDarkPaper(hex) {
@@ -150,29 +160,86 @@ function paperName(color) {
   return match ? match.name : "custom";
 }
 
-function stampDims(image, longEdge) {
-  const aspect = Math.min(1.5, Math.max(0.66, image.width / image.height));
-  return aspect >= 1
-    ? { width: longEdge, height: longEdge / aspect }
-    : { width: longEdge * aspect, height: longEdge };
+function resetCropRect() {
+  state.cropRect = { x: 0, y: 0, w: 1, h: 1 };
+}
+
+function cropSource(image) {
+  const rect = state.cropRect;
+  return {
+    x: rect.x * image.width,
+    y: rect.y * image.height,
+    w: rect.w * image.width,
+    h: rect.h * image.height,
+  };
+}
+
+function cropAspect(image) {
+  const source = cropSource(image);
+  return source.w / source.h;
+}
+
+function updateThumb() {
+  if (!state.image) return;
+
+  const ctx = thumb.getContext("2d");
+  const source = cropSource(state.image);
+  const scale = Math.max(thumb.width / source.w, thumb.height / source.h);
+  const sw = thumb.width / scale;
+  const sh = thumb.height / scale;
+  const sx = source.x + (source.w - sw) / 2;
+  const sy = source.y + (source.h - sh) / 2;
+
+  ctx.clearRect(0, 0, thumb.width, thumb.height);
+  ctx.drawImage(
+    state.image,
+    sx,
+    sy,
+    sw,
+    sh,
+    0,
+    0,
+    thumb.width,
+    thumb.height,
+  );
 }
 
 /* ---------- stamp geometry ---------- */
 
 function stampMetrics(width, height) {
   const long = Math.max(width, height);
-  const short = Math.min(width, height);
   const spacing = long / state.notches;
-  const radius = spacing * (state.hole / 100);
-  const across = Math.max(2, Math.round(width / spacing));
-  const down = Math.max(2, Math.round(height / spacing));
+  const across = Math.max(1, Math.round(width / spacing));
+  const down = Math.max(1, Math.round(height / spacing));
+  const stepX = width / across;
+  const stepY = height / down;
+  const radius = Math.min(stepX, stepY) * (state.hole / 100);
+
+  return { radius, across, down, stepX, stepY, short: Math.min(width, height) };
+}
+
+/*
+ * The photo frame is sized from the crop's aspect ratio first, then the paper
+ * border is added around it. That way the chosen crop fills the frame exactly
+ * instead of being cropped a second time.
+ */
+function stampLayout(image, frameLongEdge) {
+  const aspect = cropAspect(image);
+  const frameW = aspect >= 1 ? frameLongEdge : frameLongEdge * aspect;
+  const frameH = aspect >= 1 ? frameLongEdge / aspect : frameLongEdge;
+  const short = Math.min(frameW, frameH);
+  const base = (state.margin / 100) * short;
+  let inset = base;
+
+  for (let i = 0; i < 3 && inset > 0; i += 1) {
+    const metrics = stampMetrics(frameW + inset * 2, frameH + inset * 2);
+    inset = Math.max(base, metrics.radius + short * 0.006);
+  }
+
   return {
-    radius,
-    across,
-    down,
-    stepX: width / across,
-    stepY: height / down,
-    short,
+    width: frameW + inset * 2,
+    height: frameH + inset * 2,
+    inset,
   };
 }
 
@@ -240,9 +307,10 @@ function getGrain(ctx) {
 
 /* ---------- rendering ---------- */
 
-function renderStamp(canvas, image, width, height) {
-  const w = Math.max(2, Math.round(width));
-  const h = Math.max(2, Math.round(height));
+function renderStamp(canvas, image, frameLongEdge) {
+  const layout = stampLayout(image, frameLongEdge);
+  const w = Math.max(2, Math.round(layout.width));
+  const h = Math.max(2, Math.round(layout.height));
   canvas.width = w;
   canvas.height = h;
 
@@ -250,12 +318,12 @@ function renderStamp(canvas, image, width, height) {
   ctx.clearRect(0, 0, w, h);
 
   const metrics = stampMetrics(w, h);
-  const { radius, short } = metrics;
+  const short = Math.min(w, h);
   const dark = isDarkPaper(state.paper);
-
-  let inset = (state.margin / 100) * short;
-  if (inset > 0) inset = Math.max(inset, radius + short * 0.006);
-  else inset = 0;
+  const insetX = layout.inset * (w / layout.width);
+  const insetY = layout.inset * (h / layout.height);
+  const frameW = w - insetX * 2;
+  const frameH = h - insetY * 2;
 
   ctx.save();
   stampPath(ctx, w, h, metrics);
@@ -264,19 +332,31 @@ function renderStamp(canvas, image, width, height) {
   ctx.fillStyle = state.paper;
   ctx.fillRect(0, 0, w, h);
 
-  if (inset > 0) {
-    drawCover(ctx, image, inset, inset, w - inset * 2, h - inset * 2);
+  const source = cropSource(image);
+  if (source.w > 0 && source.h > 0 && frameW > 1 && frameH > 1) {
+    ctx.drawImage(
+      image,
+      source.x,
+      source.y,
+      source.w,
+      source.h,
+      insetX,
+      insetY,
+      frameW,
+      frameH,
+    );
+  }
+
+  if (insetX > 0.5 && insetY > 0.5) {
     const lineWidth = Math.max(1, short * 0.0014);
     ctx.strokeStyle = dark ? "rgba(255, 255, 255, 0.16)" : "rgba(0, 0, 0, 0.1)";
     ctx.lineWidth = lineWidth;
     ctx.strokeRect(
-      inset + lineWidth / 2,
-      inset + lineWidth / 2,
-      w - inset * 2 - lineWidth,
-      h - inset * 2 - lineWidth,
+      insetX + lineWidth / 2,
+      insetY + lineWidth / 2,
+      frameW - lineWidth,
+      frameH - lineWidth,
     );
-  } else {
-    drawCover(ctx, image, 0, 0, w, h);
   }
 
   const grain = getGrain(ctx);
@@ -297,16 +377,42 @@ function renderStamp(canvas, image, width, height) {
   ctx.restore();
 }
 
+/* ---------- sheet layout ---------- */
+
+function sheetLayout(image) {
+  const reference = stampLayout(image, 1000);
+  const stampAspect = reference.width / reference.height;
+  const imageAspect = image.width / image.height;
+  const relativeHeight = 0.26 + 1 / stampAspect + 1 / imageAspect;
+  const content = Math.max(
+    640,
+    Math.min(1500, image.width, Math.floor(SHEET_MAX_HEIGHT / relativeHeight)),
+  );
+  const margin = Math.round(content * 0.09);
+  const gap = Math.round(content * 0.08);
+  const stampHeight = content / stampAspect;
+  const imageHeight = content / imageAspect;
+
+  return {
+    width: Math.round(content + margin * 2),
+    height: Math.round(margin * 2 + stampHeight + gap + imageHeight),
+    content,
+    margin,
+    gap,
+    stampHeight,
+    imageHeight,
+  };
+}
+
 function paint() {
   if (!state.image) return;
 
-  const previewDims = stampDims(state.image, PREVIEW_EDGE);
-  renderStamp(preview, state.image, previewDims.width, previewDims.height);
+  renderStamp(preview, state.image, PREVIEW_EDGE);
 
-  const exportDims = stampDims(state.image, EXPORT_EDGE);
-  metaEl.textContent = `${Math.round(exportDims.width)} × ${Math.round(
-    exportDims.height,
-  )} px · ${paperName(state.paper)} paper`;
+  const sheet = sheetLayout(state.image);
+  metaEl.textContent = `${sheet.width} × ${sheet.height} px sheet · ${paperName(
+    state.paper,
+  )} paper`;
 }
 
 function scheduleDraw() {
@@ -315,12 +421,6 @@ function scheduleDraw() {
     frame = 0;
     paint();
   });
-}
-
-function setThumb(image) {
-  const ctx = thumb.getContext("2d");
-  ctx.clearRect(0, 0, thumb.width, thumb.height);
-  drawCover(ctx, image, 0, 0, thumb.width, thumb.height);
 }
 
 /* ---------- status ---------- */
@@ -382,10 +482,12 @@ async function acceptFile(file) {
     const image = await decodeImage(file);
     if (!image.width || !image.height) throw new Error("empty image");
 
+    if (editor) closeCrop();
     state.image = image;
     state.name = (file.name || "image").replace(/\.[^.]+$/, "") || "image";
     sourceName.textContent = state.name;
-    setThumb(image);
+    resetCropRect();
+    updateThumb();
     setStatus("");
     paint();
   } catch {
@@ -472,6 +574,8 @@ document.getElementById("reset").addEventListener("click", () => {
     button.setAttribute("aria-pressed", String(button.dataset.paper === state.paper));
   });
 
+  resetCropRect();
+  updateThumb();
   scheduleDraw();
 });
 
@@ -481,6 +585,277 @@ fileInput.addEventListener("change", () => {
   const [file] = fileInput.files || [];
   acceptFile(file);
   fileInput.value = "";
+});
+
+/* ---------- crop editor ---------- */
+
+function cropPointer(event) {
+  const rect = cropCanvas.getBoundingClientRect();
+  return {
+    x: ((event.clientX - rect.left) / rect.width) * editor.displayW,
+    y: ((event.clientY - rect.top) / rect.height) * editor.displayH,
+  };
+}
+
+function editorRect() {
+  const { rect, pad, imgW, imgH } = editor;
+  return {
+    x: pad + rect.x * imgW,
+    y: pad + rect.y * imgH,
+    w: rect.w * imgW,
+    h: rect.h * imgH,
+  };
+}
+
+function cursorFor(hit) {
+  if (hit === "move") return "grab";
+  if (hit === "nw" || hit === "se") return "nwse-resize";
+  if (hit === "ne" || hit === "sw") return "nesw-resize";
+  if (hit === "n" || hit === "s") return "ns-resize";
+  if (hit === "e" || hit === "w") return "ew-resize";
+  return "default";
+}
+
+function hitTest(x, y) {
+  const rect = editorRect();
+  const left = Math.abs(x - rect.x) <= HANDLE_HIT;
+  const right = Math.abs(x - (rect.x + rect.w)) <= HANDLE_HIT;
+  const top = Math.abs(y - rect.y) <= HANDLE_HIT;
+  const bottom = Math.abs(y - (rect.y + rect.h)) <= HANDLE_HIT;
+  const insideX = x >= rect.x && x <= rect.x + rect.w;
+  const insideY = y >= rect.y && y <= rect.y + rect.h;
+
+  if (left && top) return "nw";
+  if (right && top) return "ne";
+  if (left && bottom) return "sw";
+  if (right && bottom) return "se";
+  if (top && insideX) return "n";
+  if (bottom && insideX) return "s";
+  if (left && insideY) return "w";
+  if (right && insideY) return "e";
+  if (insideX && insideY) return "move";
+  return null;
+}
+
+function drawEditor() {
+  if (!editor) return;
+
+  const { pad, imgW, imgH, displayW, displayH } = editor;
+  const ctx = cropCanvas.getContext("2d");
+  ctx.clearRect(0, 0, displayW, displayH);
+  ctx.drawImage(state.image, pad, pad, imgW, imgH);
+
+  const rect = editorRect();
+  const right = rect.x + rect.w;
+  const bottom = rect.y + rect.h;
+
+  ctx.fillStyle = "rgba(6, 6, 7, 0.64)";
+  ctx.fillRect(pad, pad, imgW, rect.y - pad);
+  ctx.fillRect(pad, bottom, imgW, pad + imgH - bottom);
+  ctx.fillRect(pad, rect.y, rect.x - pad, rect.h);
+  ctx.fillRect(right, rect.y, pad + imgW - right, rect.h);
+
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.22)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let i = 1; i < 3; i += 1) {
+    const x = rect.x + (rect.w * i) / 3;
+    const y = rect.y + (rect.h * i) / 3;
+    ctx.moveTo(x, rect.y);
+    ctx.lineTo(x, bottom);
+    ctx.moveTo(rect.x, y);
+    ctx.lineTo(right, y);
+  }
+  ctx.stroke();
+
+  ctx.strokeStyle = "#f0e3c8";
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(rect.x, rect.y, rect.w, rect.h);
+
+  const handles = [
+    [rect.x, rect.y],
+    [rect.x + rect.w / 2, rect.y],
+    [right, rect.y],
+    [right, rect.y + rect.h / 2],
+    [right, bottom],
+    [rect.x + rect.w / 2, bottom],
+    [rect.x, bottom],
+    [rect.x, rect.y + rect.h / 2],
+  ];
+
+  ctx.fillStyle = "#f0e3c8";
+  ctx.strokeStyle = "rgba(10, 10, 11, 0.65)";
+  ctx.lineWidth = 1;
+  for (const [x, y] of handles) {
+    ctx.fillRect(x - 4.5, y - 4.5, 9, 9);
+    ctx.strokeRect(x - 4.5, y - 4.5, 9, 9);
+  }
+
+  cropReadout.textContent = `${Math.round(
+    editor.rect.w * state.image.width,
+  )} × ${Math.round(editor.rect.h * state.image.height)} px`;
+}
+
+function layoutEditor() {
+  if (!editor) return;
+
+  const image = state.image;
+  const stage = cropCanvas.parentElement;
+  const availW = Math.max(200, stage.clientWidth - 16);
+  const availH = Math.max(200, window.innerHeight * 0.55);
+  const pad = 18;
+  const scale = Math.min(
+    (availW - pad * 2) / image.width,
+    availH / image.height,
+    2,
+  );
+  const imgW = Math.max(2, Math.round(image.width * scale));
+  const imgH = Math.max(2, Math.round(image.height * scale));
+  const displayW = imgW + pad * 2;
+  const displayH = imgH + pad * 2;
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+
+  editor.pad = pad;
+  editor.imgW = imgW;
+  editor.imgH = imgH;
+  editor.displayW = displayW;
+  editor.displayH = displayH;
+
+  cropCanvas.style.width = `${displayW}px`;
+  cropCanvas.style.height = `${displayH}px`;
+  cropCanvas.width = Math.round(displayW * dpr);
+  cropCanvas.height = Math.round(displayH * dpr);
+  const ctx = cropCanvas.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  drawEditor();
+}
+
+function openCrop() {
+  if (!state.image) return;
+
+  editor = {
+    rect: { ...state.cropRect },
+    drag: null,
+  };
+  cropModal.hidden = false;
+  document.body.classList.add("modal-open");
+  layoutEditor();
+  cropDialog.focus({ preventScroll: true });
+}
+
+function closeCrop() {
+  if (!editor) return;
+  editor = null;
+  cropModal.hidden = true;
+  document.body.classList.remove("modal-open");
+  cropOpen.focus({ preventScroll: true });
+}
+
+function applyCrop() {
+  if (!editor) return;
+  state.cropRect = { ...editor.rect };
+  updateThumb();
+  scheduleDraw();
+  closeCrop();
+}
+
+cropCanvas.addEventListener("pointerdown", (event) => {
+  if (!editor || event.button !== 0) return;
+
+  const point = cropPointer(event);
+  const hit = hitTest(point.x, point.y);
+  if (!hit) return;
+
+  cropCanvas.setPointerCapture(event.pointerId);
+  editor.drag = {
+    id: event.pointerId,
+    hit,
+    x: point.x,
+    y: point.y,
+    rect: { ...editor.rect },
+  };
+  cropCanvas.style.cursor = hit === "move" ? "grabbing" : cursorFor(hit);
+  event.preventDefault();
+});
+
+cropCanvas.addEventListener("pointermove", (event) => {
+  if (!editor) return;
+
+  const point = cropPointer(event);
+
+  if (!editor.drag) {
+    const hover = hitTest(point.x, point.y);
+    cropCanvas.style.cursor = cursorFor(hover);
+    return;
+  }
+
+  if (event.pointerId !== editor.drag.id) return;
+
+  const drag = editor.drag;
+  const dx = (point.x - drag.x) / editor.imgW;
+  const dy = (point.y - drag.y) / editor.imgH;
+  const start = drag.rect;
+  let x0 = start.x;
+  let y0 = start.y;
+  let x1 = start.x + start.w;
+  let y1 = start.y + start.h;
+
+  if (drag.hit === "move") {
+    x0 = clamp(start.x + dx, 0, 1 - start.w);
+    y0 = clamp(start.y + dy, 0, 1 - start.h);
+    x1 = x0 + start.w;
+    y1 = y0 + start.h;
+  } else {
+    if (drag.hit.includes("w")) x0 = clamp(start.x + dx, 0, x1 - MIN_CROP);
+    if (drag.hit.includes("e")) x1 = clamp(x1 + dx, x0 + MIN_CROP, 1);
+    if (drag.hit.includes("n")) y0 = clamp(start.y + dy, 0, y1 - MIN_CROP);
+    if (drag.hit.includes("s")) y1 = clamp(y1 + dy, y0 + MIN_CROP, 1);
+  }
+
+  editor.rect = { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+  drawEditor();
+});
+
+function endEditorDrag(event) {
+  if (!editor || !editor.drag) return;
+  if (event && event.pointerId !== editor.drag.id) return;
+  editor.drag = null;
+  cropCanvas.style.cursor = "default";
+}
+
+cropCanvas.addEventListener("pointerup", endEditorDrag);
+cropCanvas.addEventListener("pointercancel", endEditorDrag);
+cropCanvas.addEventListener("lostpointercapture", endEditorDrag);
+
+document.getElementById("crop-close").addEventListener("click", closeCrop);
+document.getElementById("crop-cancel").addEventListener("click", closeCrop);
+cropApply.addEventListener("click", applyCrop);
+document.getElementById("crop-reset").addEventListener("click", () => {
+  if (!editor) return;
+  editor.rect = { x: 0, y: 0, w: 1, h: 1 };
+  drawEditor();
+});
+
+cropModal.addEventListener("pointerdown", (event) => {
+  if (event.target === cropModal) closeCrop();
+});
+
+window.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && editor) closeCrop();
+});
+
+window.addEventListener("resize", () => {
+  if (editor) layoutEditor();
+});
+
+cropOpen.addEventListener("click", openCrop);
+preview.addEventListener("click", openCrop);
+preview.addEventListener("keydown", (event) => {
+  if (event.key === "Enter" || event.key === " ") {
+    event.preventDefault();
+    openCrop();
+  }
 });
 
 /* ---------- drag and drop / paste ---------- */
@@ -537,22 +912,60 @@ function slug(value) {
   return clean || "image";
 }
 
-function download() {
-  if (!state.image || downloadButton.dataset.busy === "1") return;
+function renderStampExport(image) {
+  const canvas = document.createElement("canvas");
+  renderStamp(canvas, image, EXPORT_EDGE);
+  return canvas;
+}
 
-  downloadButton.dataset.busy = "1";
-  const label = downloadButton.innerHTML;
-  downloadButton.textContent = "rendering…";
+/*
+ * A white proof sheet: the finished stamp above the untouched original photo.
+ */
+function renderSheet(image) {
+  const layout = sheetLayout(image);
+  const canvas = document.createElement("canvas");
+  canvas.width = layout.width;
+  canvas.height = layout.height;
+
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  const stampCanvas = document.createElement("canvas");
+  renderStamp(stampCanvas, image, EXPORT_EDGE);
+  ctx.drawImage(stampCanvas, layout.margin, layout.margin, layout.content, layout.stampHeight);
+
+  ctx.drawImage(
+    image,
+    layout.margin,
+    layout.margin + layout.stampHeight + layout.gap,
+    layout.content,
+    layout.imageHeight,
+  );
+
+  return canvas;
+}
+
+function exportPng(kind, button) {
+  if (!state.image || exporting) return;
+
+  exporting = true;
+  button.dataset.busy = "1";
+  const label = button.innerHTML;
+  button.textContent = "rendering…";
 
   const restore = () => {
-    downloadButton.innerHTML = label;
-    delete downloadButton.dataset.busy;
+    button.innerHTML = label;
+    delete button.dataset.busy;
+    exporting = false;
   };
 
   try {
-    const canvas = document.createElement("canvas");
-    const dims = stampDims(state.image, EXPORT_EDGE);
-    renderStamp(canvas, state.image, dims.width, dims.height);
+    const canvas =
+      kind === "sheet" ? renderSheet(state.image) : renderStampExport(state.image);
+    const filename = `${
+      kind === "sheet" ? "stamp-sheet" : "stamp"
+    }-${slug(state.name)}.png`;
 
     canvas.toBlob((blob) => {
       if (!blob) {
@@ -564,14 +977,14 @@ function download() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `stamp-${slug(state.name)}.png`;
+      link.download = filename;
       document.body.appendChild(link);
       link.click();
       link.remove();
       window.setTimeout(() => URL.revokeObjectURL(url), 4000);
 
       restore();
-      setStatus("stamp saved");
+      setStatus(kind === "sheet" ? "sheet saved" : "stamp saved");
     }, "image/png");
   } catch {
     restore();
@@ -579,11 +992,12 @@ function download() {
   }
 }
 
-downloadButton.addEventListener("click", download);
+downloadButton.addEventListener("click", () => exportPng("sheet", downloadButton));
+downloadAlt.addEventListener("click", () => exportPng("stamp", downloadAlt));
 
 /* ---------- start ---------- */
 
 const sample = makeSampleImage();
 state.image = sample;
-setThumb(sample);
+updateThumb();
 paint();

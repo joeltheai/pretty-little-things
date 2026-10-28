@@ -49,14 +49,6 @@
 
           <div class="field">
             <div class="field-head">
-              <label for="crop">crop size</label>
-              <output id="crop-out" for="crop">100%</output>
-            </div>
-            <input id="crop" type="range" min="100" max="300" step="1" value="100" />
-          </div>
-
-          <div class="field">
-            <div class="field-head">
               <label for="notches">perforations</label>
               <output id="notches-out" for="notches">11</output>
             </div>
@@ -108,17 +100,62 @@
             <canvas
               id="preview"
               tabindex="0"
-              aria-label="Generated stamp. Drag to reposition the crop; arrow keys pan, plus and minus zoom."
+              aria-label="Generated stamp. Click to crop the image."
             ></canvas>
             <div class="stage-caption">
               <p class="meta" id="meta"></p>
-              <p class="stage-hint">
-                drag to reposition · double-click to recenter
-              </p>
+              <button id="crop-open" class="stage-crop" type="button">
+                <svg viewBox="0 0 16 16" aria-hidden="true">
+                  <path d="M4.5 2v9.5H14M2 4.5h9.5V14" />
+                </svg>
+                crop image
+              </button>
             </div>
           </div>
         </section>
       </main>
+    </div>
+
+    <div class="crop-modal" id="crop-modal" hidden>
+      <div
+        id="crop-dialog"
+        class="crop-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="crop-title"
+        tabindex="-1"
+      >
+        <div class="crop-head">
+          <h2 id="crop-title">crop image</h2>
+          <button
+            id="crop-close"
+            class="crop-close"
+            type="button"
+            aria-label="Cancel crop"
+          >
+            ×
+          </button>
+        </div>
+        <div class="crop-stage">
+          <canvas
+            id="crop-canvas"
+            aria-label="Crop editor. Drag inside the box to move it; drag a corner or edge to resize."
+          ></canvas>
+        </div>
+        <div class="crop-foot">
+          <div class="crop-note">
+            <p class="crop-tip">drag the box to move · drag a corner to resize</p>
+            <p class="crop-readout" id="crop-readout"></p>
+          </div>
+          <div class="crop-buttons">
+            <button id="crop-reset" class="quiet" type="button">reset</button>
+            <button id="crop-cancel" class="crop-cancel" type="button">cancel</button>
+            <button id="crop-apply" class="crop-apply" type="button">
+              apply crop
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="drop" id="drop" hidden><span>drop to print</span></div>
