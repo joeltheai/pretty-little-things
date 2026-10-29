@@ -9,15 +9,7 @@
       content="A little botanical playground. Shape a floating 3D flower, one slider at a time."
     />
     <title>Flower — a little botanical playground</title>
-    <link rel="stylesheet" href="./src/style.css" />
-    <script type="importmap">
-      {
-        "imports": {
-          "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
-          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
-        }
-      }
-    </script>
+    <link rel="stylesheet" href="./flower.css" />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
   </head>
   <body>
@@ -119,6 +111,7 @@
       </footer>
       <div id="announcement" class="sr-only" aria-live="polite"></div>
     </div>
-    <script type="module" src="./src/main.js"></script>
+    <script src="./vendor/three.min.js"></script>
+    <script src="./flower.js"></script>
   </body>
 </html>
