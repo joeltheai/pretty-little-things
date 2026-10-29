@@ -6,29 +6,14 @@
     <meta name="theme-color" content="#f5f3ec" />
     <meta
       name="description"
-      content="A little botanical playground. Shape a floating 3D flower, one slider at a time."
+      content="An interactive 3D flower."
     />
-    <title>Flower — a little botanical playground</title>
+    <title>Flower</title>
     <link rel="stylesheet" href="./flower.css" />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
   </head>
   <body>
     <div id="app">
-      <header class="page-header">
-        <a class="wordmark" href="./" aria-label="Flower home"
-          ><svg viewBox="0 0 36 36" fill="none" aria-hidden="true">
-            <path
-              d="M18 15C7 2 2 17 14 18C1 26 17 35 18 22C25 35 35 20 22 18C35 11 20 1 18 15Z"
-              fill="currentColor"
-            />
-            <circle cx="18" cy="18" r="3" fill="#f5f3ec" /></svg
-          ><span>flower<span class="period">.</span></span></a
-        >
-        <span class="header-note">a little botanical playground</span>
-        <span class="back-link"
-          >a pretty little thing <span aria-hidden="true">✳</span></span
-        >
-      </header>
       <main>
         <section class="stage" aria-label="Interactive 3D flower">
           <canvas
@@ -36,10 +21,6 @@
             aria-label="A floating 3D flower. Drag to rotate and scroll to zoom."
             tabindex="0"
           ></canvas>
-          <div class="specimen-label" aria-hidden="true">
-            <span class="tiny-cross">+</span> a flower, your way
-            <span class="tiny-cross">+</span>
-          </div>
           <div class="view-tools" role="group" aria-label="View controls">
             <button
               id="motion"
@@ -66,28 +47,11 @@
               </svg>
             </button>
           </div>
-          <p class="stage-hint">
-            <svg viewBox="0 0 16 16" aria-hidden="true">
-              <path d="m5 4-3 4 3 4m6-8 3 4-3 4M2 8h12" />
-            </svg>
-            drag to rotate <span>·</span> scroll to zoom
-          </p>
           <p id="scene-error" class="scene-error" role="alert" hidden></p>
         </section>
-        <aside class="controls" aria-labelledby="controls-heading">
-          <div class="panel-heading">
-            <div>
-              <span class="eyebrow">MAKE IT YOURS</span>
-              <h1 id="controls-heading">Room to bloom.</h1>
-            </div>
-            <span class="live-dot" title="Changes appear live"></span>
-          </div>
-          <p class="panel-intro">A little nudge. A whole new flower.</p>
+        <aside class="controls" aria-label="Flower controls">
           <div id="slider-controls"></div>
-          <fieldset class="palette-control">
-            <legend>
-              <span class="section-number">04</span> A little color
-            </legend>
+          <fieldset class="palette-control" aria-label="Color">
             <div
               id="palettes"
               class="palettes"
@@ -100,15 +64,11 @@
               <svg viewBox="0 0 18 18" aria-hidden="true">
                 <path d="m12 3 3 3-3 3M3 6h12M6 9l-3 3 3 3m-3-3h12" />
               </svg>
-              Surprise me</button
+              Randomize</button
             ><button type="button" id="reset">Reset</button>
           </div>
         </aside>
       </main>
-      <footer class="page-footer">
-        <span>NOTHING TO DO. JUST GROW.</span
-        ><span>made of petals & possibilities</span>
-      </footer>
       <div id="announcement" class="sr-only" aria-live="polite"></div>
     </div>
     <script src="./vendor/three.min.js"></script>

@@ -115,10 +115,10 @@
   });
   const sections = [
     {
-      title: "The bloom",
+      title: "Bloom",
       controls: [
         ["bloom", "Bloom", 0, 100, 1, "%"],
-        ["petals", "Petals per layer", 5, 16, 1, ""],
+        ["petals", "Petals", 5, 16, 1, ""],
         ["petalLength", "Petal length", 0.65, 1.9, 0.01, "×"],
         ["curl", "Petal curl", 0, 100, 1, "%"],
       ],
@@ -133,7 +133,7 @@
       ],
     },
     {
-      title: "A little movement",
+      title: "Motion",
       controls: [
         ["sway", "Sway", 0, 100, 1, "%"],
         ["spin", "Slow spin", 0, 100, 1, "%"],
@@ -202,13 +202,10 @@
       `${unit === "×" ? Number(value).toFixed(2) : Math.round(value)}${unit}`;
   }
 
-  sections.forEach((section, index) => {
+  sections.forEach((section) => {
     const group = document.createElement("section");
     group.className = "control-section";
-    const title = document.createElement("h2");
-    title.className = "section-title";
-    title.innerHTML = `<span class="section-number">0${index + 1}</span>${section.title}`;
-    group.append(title);
+    group.setAttribute("aria-label", section.title);
     section.controls.forEach(([key, label, min, max, step, unit]) => {
       const row = document.createElement("div");
       row.className = "control";
