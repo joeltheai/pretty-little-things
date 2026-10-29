@@ -8,6 +8,6 @@ Open `index.html`, or choose **flower** from the main project list. Plain HTML, 
 - Drag to rotate, scroll or pinch to zoom. The circular arrow resets the camera.
 - Double-click a slider to reset it. Arrow keys and Home/End work too.
 
-Petal widths follow their spacing, and the two layers keep a gap to prevent intersections. The layout adapts to small screens and respects reduced motion.
+A single ring of side-by-side petals uses the same rounded outline as the synth project. Petal widths adapt to their spacing to prevent intersections. The layout adapts to small screens and respects reduced motion.
 
 `flower.js` contains the scene, geometry, and controls. `flower.css` contains the styles. `vendor/three.min.js` is a local copy of Three.js r180 with OrbitControls, under the included MIT license. Fonts load optionally from Google Fonts and fall back to local sans-serif fonts when offline. The flower itself needs no network connection.

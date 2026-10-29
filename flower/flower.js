@@ -2,52 +2,43 @@
   "use strict";
   const { OrbitControls } = THREE;
 
-  // Petals are graphs of the same radial surface. Angular sectors separate
-  // neighbors, and a vertical offset separates the two layers at every radius.
-  // Curl changes height without pulling a petal back through the flower's axis.
-  function createPetalGeometry({ count, open, length, curl, layer }) {
-    const rows = 24;
-    const columns = 12;
-    const layerCount = count - layer * 2;
-    const halfSector = (Math.PI / layerCount) * 0.88;
+  // One ring of petals, using the rounded outline from synth/garden.js.
+  // Width scales uniformly to fit a spoke, preserving the silhouette as the
+  // flower closes or the petal count increases.
+  function createPetalGeometry({ count, open, length, curl }) {
+    const rows = 32;
+    const columns = 10;
+    const halfSector = (Math.PI / count) * 0.92;
     const angle = -1.39 + open * 1.49;
     const rootRadius = 0.1 + open * 0.17;
     const radialSpan = length * Math.cos(angle);
     const rise = -length * Math.sin(angle);
     const cup = length * curl * 0.46 * Math.cos(angle);
-    const layerSize = 1 - layer * 0.19;
-    // Exceeds edge cupping, scalloping, shell thickness and triangulation error.
-    const layerHeight = layer * (0.1 * length + 0.025) - 0.025;
+    const profile = [];
+    let widestSlope = 0;
+    for (let row = 0; row <= rows; row++) {
+      const u = row / rows * Math.PI;
+      const t = (1 - Math.cos(u)) / 2;
+      const radius = rootRadius + radialSpan * t;
+      // Same radial/lateral parametrization as the synth's drawBloom().
+      const width = Math.sin(u) * Math.sin(u / 2) * length * 0.46;
+      widestSlope = Math.max(widestSlope, width / radius);
+      profile.push({ t, radius, width });
+    }
+    const widthScale = Math.min(1, Math.tan(halfSector) / widestSlope);
     const positions = [];
     const indices = [];
 
     for (let side = 0; side < 2; side++) {
-      for (let row = 0; row <= rows; row++) {
-        const t = row / rows;
-        const u = t * layerSize;
-        const radius = rootRadius + radialSpan * u;
-        const outline = Math.pow(Math.sin(Math.PI * t), 0.62);
-        const naturalWidth =
-          length * layerSize * 0.39 * outline * (0.6 + t * 0.65);
-        const angularWidth = Math.min(
-          halfSector,
-          Math.atan2(naturalWidth, radius),
-        );
+      for (const { t, radius, width } of profile) {
         for (let column = 0; column <= columns; column++) {
           const across = (column / columns) * 2 - 1;
-          const theta = across * angularWidth;
-          const edgeCup = length * 0.035 * across ** 2 * Math.sin(Math.PI * u);
-          const scallop =
-            length * 0.008 * Math.cos(across * Math.PI * 3) * u ** 5;
+          const x = width * widthScale * across;
+          const edgeCup = length * 0.035 * across ** 2 * Math.sin(Math.PI * t);
           const thickness = length * 0.006 * Math.sin(Math.PI * t);
-          const y =
-            layerHeight +
-            rise * u +
-            cup * u * u +
-            edgeCup +
-            scallop +
-            (side === 0 ? thickness : -thickness);
-          positions.push(radius * Math.sin(theta), y, radius * Math.cos(theta));
+          const y = -0.025 + rise * t + cup * t * t + edgeCup
+            + (side === 0 ? thickness : -thickness);
+          positions.push(x, y, radius);
         }
       }
     }
@@ -428,15 +419,12 @@
     bloom.add(petalGroup);
     const leafGroup = new THREE.Group();
     flower.add(leafGroup);
-    let petalGeometries = [0, 1].map((layer) =>
-      createPetalGeometry({
-        count: state.petals,
-        open: current.bloom / 100,
-        length: current.petalLength,
-        curl: current.curl / 100,
-        layer,
-      }),
-    );
+    let petalGeometry = createPetalGeometry({
+      count: state.petals,
+      open: current.bloom / 100,
+      length: current.petalLength,
+      curl: current.curl / 100,
+    });
     const leafGeometry = createLeafGeometry();
     const sepalGeometry = createLeafGeometry();
     const petals = [];
@@ -495,25 +483,16 @@
     function rebuildPetals(count) {
       petalGroup.clear();
       petals.length = 0;
-      for (let layer = 0; layer < 2; layer++) {
-        const layerCount = count - layer * 2;
-        for (let i = 0; i < layerCount; i++) {
-          const pivot = new THREE.Group();
-          pivot.rotation.y = (i / layerCount) * Math.PI * 2 + layer * 0.34;
-          const petal = new THREE.Mesh(
-            petalGeometries[layer],
-            materials.petals[(i + layer) % 3],
-          );
-          pivot.add(petal);
-          petalGroup.add(pivot);
-          petals.push({
-            pivot,
-            petal,
-            layer,
-          });
-        }
+      for (let i = 0; i < count; i++) {
+        const pivot = new THREE.Group();
+        pivot.rotation.y = i / count * Math.PI * 2;
+        const petal = new THREE.Mesh(petalGeometry, materials.petals[i % 3]);
+        pivot.add(petal);
+        petalGroup.add(pivot);
+        petals.push({ pivot, petal });
       }
     }
+
     function rebuildLeaves(count) {
       leafGroup.clear();
       leaves.length = 0;
@@ -545,21 +524,17 @@
         .join(",");
       if (previousPetalShape !== petalShape) {
         previousPetalShape = petalShape;
-        const oldGeometries = petalGeometries;
-        petalGeometries = [0, 1].map((layer) =>
-          createPetalGeometry({
-            count: state.petals,
-            open,
-            length: current.petalLength,
-            curl: current.curl / 100,
-            layer,
-          }),
-        );
-        petals.forEach(({ petal, layer }) => {
-          petal.geometry = petalGeometries[layer];
+        const oldGeometry = petalGeometry;
+        petalGeometry = createPetalGeometry({
+          count: state.petals,
+          open,
+          length: current.petalLength,
+          curl: current.curl / 100,
         });
-        oldGeometries.forEach((geometry) => geometry.dispose());
+        petals.forEach(({ petal }) => { petal.geometry = petalGeometry; });
+        oldGeometry.dispose();
       }
+
       const centerWidth = 0.3 + open * 0.7;
       center.scale.set(centerWidth, 0.46, centerWidth);
       seeds.scale.set(centerWidth, 0.6 + open * 0.4, centerWidth);
@@ -585,7 +560,7 @@
         }
       }
       bloom.position.copy(curve.getPoint(1));
-      bloom.rotation.set(0.13, 0.15, -0.12 - bend * 0.22);
+      bloom.rotation.set(0.5, 0.15, -0.12 - bend * 0.22);
       // Recenter the growing specimen without changing the user's orbit or zoom.
       const petalAngle = -1.39 + open * 1.49;
       const tipHeight =
