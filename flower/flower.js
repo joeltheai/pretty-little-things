@@ -110,16 +110,16 @@
       controls: [
         ["bloom", "Bloom", 0, 100, 1, "%"],
         ["petals", "Petals", 5, 16, 1, ""],
-        ["petalLength", "Petal length", 0.65, 1.9, 0.01, "×"],
-        ["curl", "Petal curl", 0, 100, 1, "%"],
+        ["petalLength", "Length", 0.65, 1.9, 0.01, "×", "Petal length"],
+        ["curl", "Curl", 0, 100, 1, "%", "Petal curl"],
       ],
     },
     {
       title: "Stem & leaves",
       controls: [
-        ["height", "Stem height", 2, 4.7, 0.01, "×"],
-        ["bend", "Stem bend", -65, 65, 1, "%"],
-        ["leafLength", "Leaf length", 0.3, 2, 0.01, "×"],
+        ["height", "Height", 2, 4.7, 0.01, "×", "Stem height"],
+        ["bend", "Bend", -65, 65, 1, "%", "Stem bend"],
+        ["leafLength", "Leaf", 0.3, 2, 0.01, "×", "Leaf length"],
         ["leafCount", "Leaves", 0, 6, 1, ""],
       ],
     },
@@ -127,7 +127,7 @@
       title: "Motion",
       controls: [
         ["sway", "Sway", 0, 100, 1, "%"],
-        ["spin", "Slow spin", 0, 100, 1, "%"],
+        ["spin", "Spin", 0, 100, 1, "%", "Slow spin"],
       ],
     },
   ];
@@ -197,24 +197,26 @@
     const group = document.createElement("section");
     group.className = "control-section";
     group.setAttribute("aria-label", section.title);
-    section.controls.forEach(([key, label, min, max, step, unit]) => {
-      const row = document.createElement("div");
-      row.className = "control";
-      row.innerHTML = `<label for="${key}">${label}</label><output for="${key}"></output><input type="range" id="${key}" min="${min}" max="${max}" step="${step}" data-unit="${unit}" aria-label="${label}" title="Double-click to reset" />`;
-      const input = row.querySelector("input");
-      inputs.set(key, input);
-      outputs.set(key, row.querySelector("output"));
-      input.addEventListener("input", () => {
-        state[key] = Number(input.value);
+    section.controls.forEach(
+      ([key, label, min, max, step, unit, full = label]) => {
+        const row = document.createElement("div");
+        row.className = "control";
+        row.innerHTML = `<label for="${key}">${label}</label><output for="${key}"></output><input type="range" id="${key}" min="${min}" max="${max}" step="${step}" data-unit="${unit}" aria-label="${full}" title="Double-click to reset" />`;
+        const input = row.querySelector("input");
+        inputs.set(key, input);
+        outputs.set(key, row.querySelector("output"));
+        input.addEventListener("input", () => {
+          state[key] = Number(input.value);
+          syncControl(key, state[key]);
+        });
+        input.addEventListener("dblclick", () => {
+          state[key] = DEFAULTS[key];
+          syncControl(key, state[key]);
+        });
         syncControl(key, state[key]);
-      });
-      input.addEventListener("dblclick", () => {
-        state[key] = DEFAULTS[key];
-        syncControl(key, state[key]);
-      });
-      syncControl(key, state[key]);
-      group.append(row);
-    });
+        group.append(row);
+      },
+    );
     sliderContainer.append(group);
   });
 
