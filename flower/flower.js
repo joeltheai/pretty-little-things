@@ -253,7 +253,7 @@
     Object.assign(state, DEFAULTS);
     for (const key of Object.keys(state)) syncControl(key, state[key]);
     selectPalette(0);
-    announcement.textContent = "Flower reset to its original shape and color.";
+    announcement.textContent = "Flower reset.";
   });
   document.querySelector("#randomize").addEventListener("click", () => {
     const ranges = {
@@ -283,7 +283,7 @@
       (paletteIndex + 1 + Math.floor(Math.random() * (palettes.length - 1))) %
         palettes.length,
     );
-    announcement.textContent = `A new ${palettes[paletteIndex].name.toLowerCase()} flower is growing.`;
+    announcement.textContent = `New ${palettes[paletteIndex].name.toLowerCase()} flower.`;
   });
 
   // Leaves and sepals have a softly ridged face, an underside, and an edge.
@@ -648,9 +648,7 @@
     }
     canvas.addEventListener("webglcontextlost", (event) => {
       event.preventDefault();
-      showError(
-        "The 3D view was interrupted. Reload the page to grow your flower again.",
-      );
+      showError("3D view lost. Reload the page.");
       renderer.setAnimationLoop(null);
     });
     renderer.setAnimationLoop(animate);
@@ -675,8 +673,6 @@
     startScene();
   } catch (error) {
     console.error(error);
-    showError(
-      "This flower needs WebGL. Try opening it in a browser with hardware acceleration enabled.",
-    );
+    showError("This flower needs WebGL. Try a browser with hardware acceleration.");
   }
 })();

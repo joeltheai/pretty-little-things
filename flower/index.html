@@ -4,10 +4,6 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#f5f3ec" />
-    <meta
-      name="description"
-      content="An interactive 3D flower."
-    />
     <title>Flower</title>
     <link rel="stylesheet" href="./flower.css" />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
@@ -15,10 +11,10 @@
   <body>
     <div id="app">
       <main>
-        <section class="stage" aria-label="Interactive 3D flower">
+        <section class="stage" aria-label="Flower">
           <canvas
             id="flower-canvas"
-            aria-label="A floating 3D flower. Drag to rotate and scroll to zoom."
+            aria-label="3D flower. Drag to rotate, scroll to zoom."
             tabindex="0"
           ></canvas>
           <div class="view-tools" role="group" aria-label="View controls">
@@ -49,14 +45,14 @@
           </div>
           <p id="scene-error" class="scene-error" role="alert" hidden></p>
         </section>
-        <aside class="controls" aria-label="Flower controls">
+        <aside class="controls" aria-label="Controls">
           <div id="slider-controls"></div>
           <fieldset class="palette-control" aria-label="Color">
             <div
               id="palettes"
               class="palettes"
               role="group"
-              aria-label="Flower color palette"
+              aria-label="Palette"
             ></div>
           </fieldset>
           <div class="panel-footer">
@@ -68,8 +64,9 @@
             >
               <svg viewBox="0 0 18 18" aria-hidden="true">
                 <path d="m12 3 3 3-3 3M3 6h12M6 9l-3 3 3 3m-3-3h12" />
-              </svg></button
-            ><button
+              </svg>
+            </button>
+            <button
               type="button"
               id="reset"
               aria-label="Reset flower shape and color"
