@@ -241,17 +241,22 @@ main {
   border-top: 1px solid var(--line);
 }
 .panel-footer button {
-  font-size: 10px;
-  padding: 4px 0;
+  width: 30px;
+  height: 30px;
+  padding: 6px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
   color: #7e8575;
-  display: flex;
-  align-items: center;
-  gap: 7px;
+  transition:
+    background 0.2s,
+    color 0.2s;
 }
 .panel-footer button:first-child {
   color: var(--ink);
 }
 .panel-footer button:hover {
+  background: #e9e9df;
   color: var(--accent);
 }
 .panel-footer svg {

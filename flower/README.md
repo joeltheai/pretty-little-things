@@ -4,8 +4,8 @@ Open `index.html`, or choose **flower** from the main project list. Plain HTML, 
 
 - Shape the bloom, petal count, length, and curl.
 - Change stem height and bend, leaf length, and leaf count.
-- Set sway and spin, pause motion, pick a palette, or randomize the flower.
-- Drag to rotate, scroll or pinch to zoom. The circular arrow resets the camera.
+- Set sway and spin, pause motion, pick a palette, shuffle the flower with the shuffle icon, or reset it with the counter-clockwise arrow.
+- Drag to rotate, scroll or pinch to zoom. The circular arrow under the flower resets the camera.
 - Double-click a slider to reset it. Arrow keys and Home/End work too.
 
 A single ring of side-by-side petals uses the same rounded outline as the synth project. Petal widths adapt to their spacing to prevent intersections. The layout adapts to small screens and respects reduced motion.
