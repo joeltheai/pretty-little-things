@@ -508,7 +508,7 @@
       face.addEventListener("pointerdown", (e) => {
         if (e.button !== 0) return;
         e.preventDefault();
-        range.focus();
+        range.focus({ preventScroll: true });
         face.setPointerCapture(e.pointerId);
         drag = { y: e.clientY, value: Number(range.value) };
       });
@@ -638,7 +638,7 @@
       input.addEventListener("pointerdown", (e) => {
         if (e.button !== 0) return;
         e.preventDefault();
-        input.focus();
+        input.focus({ preventScroll: true });
         input.setPointerCapture(e.pointerId);
         const rect = input.getBoundingClientRect();
         drag = {
@@ -791,7 +791,7 @@
     };
     $("#envelope").setPointerCapture(e.pointerId);
     e.preventDefault();
-    handle.focus();
+    handle.focus({ preventScroll: true });
   });
   $("#envelope").addEventListener("pointermove", (e) => {
     if (!envDrag) return;
@@ -1389,7 +1389,7 @@
     steps.addEventListener("pointerdown", (e) => {
       if (e.button !== 0 || !e.target.closest(".step")) return;
       e.preventDefault();
-      e.target.closest(".step").focus();
+      e.target.closest(".step").focus({ preventScroll: true });
       steps.setPointerCapture(e.pointerId);
       drawing = true;
       paint(e);
@@ -1698,9 +1698,98 @@
     heldKeys.clear();
   });
 
+  // Native horizontal scrolling leaves vertical page scrolling available on touch.
+  const mobileLayout = matchMedia("(max-width: 1030px)");
+  const workspace = $(".workspace");
+  const panels = $$(".panel");
+  const panelButtons = $$(".mobile-navigation [data-panel]");
+  const gardenButton = $("#garden-view");
+  let selectedPanel = 0;
+  let gardenView = false;
+  function syncCarousel() {
+    if (mobileLayout.matches) {
+      workspace.setAttribute("aria-roledescription", "carousel");
+      workspace.setAttribute("aria-describedby", "carousel-hint");
+    } else {
+      workspace.removeAttribute("aria-roledescription");
+      workspace.removeAttribute("aria-describedby");
+    }
+    panels.forEach((panel, index) => {
+      panel.inert =
+        mobileLayout.matches && (gardenView || index !== selectedPanel);
+    });
+    panelButtons.forEach((button, index) => {
+      button.setAttribute(
+        "aria-pressed",
+        String(!gardenView && index === selectedPanel),
+      );
+    });
+    gardenButton.setAttribute("aria-pressed", String(gardenView));
+    workspace.style.setProperty(
+      "--panel-height",
+      `${panels[selectedPanel].offsetHeight}px`,
+    );
+  }
+  function scrollToPanel() {
+    if (!mobileLayout.matches) return;
+    workspace.scrollTo({
+      left: panels[selectedPanel].offsetLeft - panels[0].offsetLeft,
+      behavior: "instant",
+    });
+  }
+  function showPanel(index) {
+    selectedPanel = index;
+    gardenView = false;
+    document.body.classList.remove("garden-view");
+    syncCarousel();
+    resize(false);
+    scrollToPanel();
+  }
+  panelButtons.forEach((button, index) => {
+    button.addEventListener("click", () => showPanel(index));
+  });
+  gardenButton.addEventListener("click", () => {
+    if (gardenView) return showPanel(selectedPanel);
+    gardenView = true;
+    document.body.classList.add("garden-view");
+    syncCarousel();
+    window.scrollTo({ top: 0, behavior: "instant" });
+    resize();
+  });
+  let carouselFrame = 0;
+  workspace.addEventListener(
+    "scroll",
+    () => {
+      if (!mobileLayout.matches || gardenView || carouselFrame) return;
+      carouselFrame = requestAnimationFrame(() => {
+        carouselFrame = 0;
+        let distance = Infinity;
+        panels.forEach((panel, index) => {
+          const next = Math.abs(
+            panel.offsetLeft - panels[0].offsetLeft - workspace.scrollLeft,
+          );
+          if (next < distance) {
+            distance = next;
+            selectedPanel = index;
+          }
+        });
+        syncCarousel();
+      });
+    },
+    { passive: true },
+  );
+  mobileLayout.addEventListener("change", () => {
+    gardenView = false;
+    document.body.classList.remove("garden-view");
+    syncCarousel();
+    scrollToPanel();
+    resize();
+  });
+
   // Patch cables follow the modules, including after a drag or responsive reflow.
   let topZ = 3;
   function updateWires() {
+    if (mobileLayout.matches) return;
     [
       ["chord-out", "arp-in", "chord-wire"],
       ["arp-out", "synth-in", "synth-wire"],
@@ -1748,7 +1837,7 @@
       const fromHandle = e.target.closest(".panel-handle");
       if (
         e.button !== 0 ||
-        (innerWidth < 631 && !fromHandle) ||
+        mobileLayout.matches ||
         (!fromHandle &&
           e.target !== panel &&
           !e.target.classList.contains("panel-content"))
@@ -1790,6 +1879,7 @@
       }),
     );
     handle.addEventListener("keydown", (e) => {
+      if (mobileLayout.matches) return;
       const directions = {
         ArrowLeft: [-1, 0],
         ArrowRight: [1, 0],
@@ -1818,7 +1908,10 @@
     window.addEventListener("resize", placePanel);
   });
   window.addEventListener("scroll", updateWires, { passive: true });
-  const resizeObserver = new ResizeObserver(updateWires);
+  const resizeObserver = new ResizeObserver(() => {
+    syncCarousel();
+    updateWires();
+  });
   $$(".panel").forEach((p) => resizeObserver.observe(p));
 
   const canvas = $("#garden"),
@@ -1834,15 +1927,22 @@
   let scopeWidth = 0,
     scopeHeight = 0,
     lastFrame = 0;
-  function resize() {
+  function resize(alignCarousel = true) {
     const dpr = Math.min(devicePixelRatio || 1, 2);
-    gardenScene.resize(innerWidth, innerHeight, dpr);
+    gardenScene.resize(
+      innerWidth,
+      innerHeight,
+      dpr,
+      mobileLayout.matches && !gardenView,
+    );
     const rect = scope.getBoundingClientRect();
     scopeWidth = rect.width;
     scopeHeight = rect.height;
     scope.width = Math.round(scopeWidth * dpr);
     scope.height = Math.round(scopeHeight * dpr);
     scopeCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    syncCarousel();
+    if (alignCarousel) scrollToPanel();
     updateWires();
   }
   function setMotion(value) {
@@ -1850,6 +1950,7 @@
     gardenScene.setMotion(value);
     $("#motion").setAttribute("aria-pressed", String(motion));
     $("#motion").title = motion ? "Pause animation" : "Enable animation";
+    $("#motion").setAttribute("aria-label", $("#motion").title);
   }
   $("#motion").addEventListener("click", () => setMotion(!motion));
   setMotion(motion);
@@ -1938,7 +2039,13 @@
     ["chord", "synth"].forEach((id, i) => {
       const circle = $(`#${id}-pulse`),
         path = $(`#${id === "chord" ? "chord" : "synth"}-wire`);
-      if (motion && voice && now >= voice.t && now - voice.t < 0.4) {
+      if (
+        !mobileLayout.matches &&
+        motion &&
+        voice &&
+        now >= voice.t &&
+        now - voice.t < 0.4
+      ) {
         const progress = clamp((now - voice.t) / 0.4 + i * 0.12, 0, 1);
         const p = path.getPointAtLength(path.getTotalLength() * progress);
         circle.setAttribute("cx", p.x);

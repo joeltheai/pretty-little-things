@@ -1006,67 +1006,347 @@ svg {
   padding: 10px;
   border: 1px solid #666;
 }
-@media (max-width: 1030px) {
-  .workspace {
-    grid-template-columns: 220px 320px;
-    column-gap: 45px;
-    row-gap: 40px;
-    padding-top: 105px;
-    padding-bottom: 110px;
-    min-height: 100vh;
-  }
-  .chord-panel {
-    margin-top: 0;
-  }
-  .arp-panel {
-    margin-top: 0;
-  }
-  .synth-panel {
-    grid-column: 1/-1;
-    width: 340px;
-    justify-self: center;
-    margin: 0;
-  }
+.mobile-navigation,
+.mobile-hint,
+.mobile-panel-title {
+  display: none;
 }
-@media (max-width: 630px) {
+@media (max-width: 1030px) {
+  html {
+    overscroll-behavior-y: none;
+    scroll-padding-top: calc(124px + env(safe-area-inset-top, 0px));
+  }
+  body {
+    display: flow-root;
+    min-height: 100svh;
+  }
   .transport {
-    top: 20px;
+    position: fixed;
+    top: calc(12px + env(safe-area-inset-top, 0px));
+    gap: 12px;
+    padding: 0 12px;
+    border: 1px solid #292929;
+    border-radius: 28px;
+    background: #080808ed;
+    z-index: 5;
+  }
+  .transport button {
+    width: 44px;
+    height: 44px;
+    padding: 12px;
+  }
+  .transport input {
+    width: clamp(90px, 28vw, 150px);
+  }
+  .transport output {
+    width: 28px;
+    font-size: 12px;
+  }
+  .mobile-navigation {
+    position: sticky;
+    top: calc(70px + env(safe-area-inset-top, 0px));
+    z-index: 4;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    width: min(380px, calc(100% - 40px));
+    margin: calc(clamp(150px, 28svh, 240px) + env(safe-area-inset-top, 0px)) auto 0;
+    padding: 4px;
+    gap: 3px;
+    border: 1px solid #333;
+    border-radius: 8px;
+    background: #080808f5;
+  }
+  .mobile-navigation button {
+    min-height: 44px;
+    min-width: 0;
+    padding: 0 3px;
+    border-color: transparent;
+    font-size: 11px;
+    color: #999;
+  }
+  .mobile-navigation button[aria-pressed="true"] {
+    background: #dedede;
+    color: #080808;
+  }
+  .mobile-hint {
+    display: block;
+    position: relative;
+    z-index: 2;
+    margin: 12px 20px 0;
+    text-align: center;
+    color: #999;
+    font-size: 9px;
+    line-height: 1.5;
   }
   .workspace {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 36px;
-    padding: 92px 18px 90px;
+    display: grid;
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: 100%;
+    justify-content: start;
+    align-items: start;
+    gap: 16px;
+    min-height: 0;
+    height: calc(var(--panel-height, 650px) + 52px + env(safe-area-inset-bottom, 0px));
+    padding: 20px 20px calc(32px + env(safe-area-inset-bottom, 0px));
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    scroll-padding-inline: 20px;
+    scrollbar-width: none;
+    /* Only the horizontal carousel is contained. The page can still scroll vertically. */
+    overscroll-behavior-x: contain;
+  }
+  .workspace::-webkit-scrollbar {
+    display: none;
   }
   .panel {
     width: 100%;
+    max-width: 380px;
     margin: 0;
-  }
-  .chord-panel {
-    max-width: 220px;
-  }
-  .arp-panel {
-    max-width: 320px;
-  }
-  .synth-panel {
-    max-width: 340px;
+    align-self: start;
+    justify-self: center;
+    scroll-snap-align: center;
+    scroll-snap-stop: always;
   }
   .panel-content {
-    padding: 10px;
+    padding: 16px;
   }
-  .swing-control input {
-    width: 29px;
+  .mobile-panel-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 0 0 16px;
+    font-size: 12px;
+    font-weight: 400;
+    color: #ddd;
+  }
+  .mobile-panel-title span {
+    color: #777;
+    font-size: 10px;
+  }
+  .panel-handle,
+  .port,
+  .wires {
+    display: none;
+  }
+  .wheel-wrap {
+    max-width: 304px;
+    margin: 0 auto 16px;
+  }
+  .chord-sequence {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr) 44px 44px;
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+  .chord-slots {
+    gap: 3px;
+  }
+  .chord-slots span {
+    min-width: 0;
+    height: 36px;
+    font-size: 9px;
+  }
+  .chord-options select,
+  select {
+    min-height: 44px;
+    padding: 8px 6px;
+    /* Prevent iOS from zooming the page when opening a select. */
+    font-size: 16px;
+  }
+  .icon-button,
+  .chord-sequence .icon-button,
+  .lane-controls .icon-button {
+    width: 44px;
+    height: 44px;
+    font-size: 18px;
+  }
+  .arp-toolbar {
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+  .arp-toolbar > #pattern {
+    min-width: 0;
+    width: 0;
+  }
+  .arp-toolbar > #rate {
+    width: 70px;
+  }
+  .lane-tab {
+    min-height: 44px;
+    font-size: 12px;
+  }
+  .lanes {
+    height: 190px;
+  }
+  .steps {
+    height: 132px;
+  }
+  .step {
+    height: 130px;
+  }
+  .step .step-value {
+    font-size: 10px;
+    top: calc(100% + 6px);
+  }
+  .lane[data-lane="octave"] .steps::after {
+    top: 66px;
+  }
+  .step-mutes {
+    margin-top: 20px;
+    height: 38px;
+  }
+  .mute-step {
+    height: 38px;
   }
   .lane-controls {
-    gap: 4px;
+    display: grid;
+    grid-template-columns: auto minmax(32px, 1fr) 16px auto 44px 44px;
+    gap: 5px;
+    height: auto;
+    margin-top: 12px;
+    padding-top: 12px;
+    font-size: 11px;
   }
   .lane-controls > #lane-length {
-    width: 43px;
+    width: 100%;
+  }
+  .lane-controls > #lane-division {
+    width: 54px;
+    font-size: 16px;
+    padding: 4px;
+  }
+  .lane-controls output {
+    font-size: 11px;
+  }
+  .swing-control {
+    grid-column: 1 / -1;
+    justify-content: space-between;
+    margin: 0;
+    gap: 16px;
+    font-size: 11px;
+  }
+  .swing-control input {
+    flex: 1;
+    width: auto;
+  }
+  input[type="range"],
+  .env-control input {
+    height: 44px;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    width: 20px;
+    height: 20px;
+    margin-top: -9.5px;
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+  }
+  .waves {
+    gap: 8px;
+    margin: 12px 0;
+  }
+  .waves button {
+    height: 44px;
+  }
+  .osc-row {
+    gap: 12px;
+  }
+  .osc-row > .knob-row {
+    gap: 8px;
+  }
+  .unison-control {
+    grid-template-columns: 44px minmax(0, 1fr) 44px;
+    height: 70px;
+  }
+  .vertical-thumb {
+    width: 16px;
+    height: 10px;
+  }
+  .unison-readout {
+    opacity: 1;
+    font-size: 9px;
+    bottom: -13px;
+  }
+  .voice-readout {
+    left: -35px;
+  }
+  .detune-readout {
+    right: -35px;
+  }
+  .knob {
+    min-width: 44px;
+    gap: 4px;
+    font-size: 10px;
+  }
+  .knob-face,
+  .synth-bottom .knob-face {
+    width: 44px;
+    height: 44px;
+  }
+  .knob output,
+  .synth-bottom .knob output {
+    position: static;
+    opacity: 1;
+    font-size: 10px;
+    min-height: 12px;
+  }
+  .synth-bottom .knob {
+    gap: 4px;
+    font-size: 10px;
+  }
+  .envelope-module {
+    margin-top: 20px;
+    padding-top: 12px;
+  }
+  #envelope {
+    height: 106px;
+  }
+  #env-handles .env-hit {
+    r: 22px;
+  }
+  .envelope-controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px 20px;
+    margin-top: 10px;
+  }
+  .env-control {
+    font-size: 11px;
+    gap: 0;
+  }
+  .env-control output {
+    opacity: 1;
+    font-size: 10px;
+  }
+  .filter-row,
+  .synth-bottom {
+    margin-top: 12px;
+    padding-top: 12px;
   }
   .motion-button {
-    right: 13px;
-    bottom: 13px;
+    right: calc(8px + env(safe-area-inset-right, 0px));
+    top: calc(13px + env(safe-area-inset-top, 0px));
+    bottom: auto;
+    z-index: 5;
+    width: 44px;
+    height: 44px;
+    border: 1px solid #333;
+    border-radius: 50%;
+    background: #080808ed;
+    color: #bbb;
+    font-size: 26px;
+  }
+  .garden-view .workspace {
+    display: none;
+  }
+  .garden-view .mobile-hint {
+    visibility: hidden;
+  }
+  .audio-error {
+    max-width: calc(100% - 80px);
+    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
   }
 }
 @media (prefers-reduced-motion: reduce) {
