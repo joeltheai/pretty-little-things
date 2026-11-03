@@ -1714,6 +1714,54 @@
     heldKeys.clear();
   });
 
+  function exportPatch() {
+    const patch = {
+      version: 1,
+      synth: { ...state },
+      transport: { bpm, rate, swing },
+      chord: chordConfig(),
+      progression: {
+        enabled: progression.enabled,
+        chords: progression.chords.map(
+          ({ root, minor, extension, inversion }) => ({
+            root,
+            minor,
+            extension,
+            inversion,
+          }),
+        ),
+      },
+      arp: {
+        pattern: $("#pattern").value,
+        selectedLane,
+        linked,
+        retrigger,
+        bypass,
+        lanes: Object.fromEntries(
+          lanes.map((lane) => [lane.id, {
+            length: lane.length,
+            division: lane.division,
+            values: [...lane.values],
+            mutes: [...lane.mutes],
+          }]),
+        ),
+      },
+      motion,
+    };
+    const file = new Blob([JSON.stringify(patch, null, 2) + "\n"], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(file);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `synth-patch-${new Date().toISOString().replace(/[:.]/g, "-")}.json`;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
+  }
+  $("#export-patch").addEventListener("click", exportPatch);
+
   // One instrument per page on mobile; the garden remains a full-screen backdrop.
   const mobileLayout = matchMedia("(max-width: 1030px)");
   const workspace = $(".workspace");
