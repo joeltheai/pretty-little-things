@@ -926,6 +926,23 @@
     for (let i = 0; i < config.inversion; i++) notes.push(notes.shift() + 12);
     return notes.sort((a, b) => a - b);
   }
+  function chordName(config) {
+    const suffix =
+      config.extension === "seventh"
+        ? config.minor
+          ? "m7"
+          : "maj7"
+        : config.extension === "ninth"
+          ? config.minor
+            ? "madd9"
+            : "add9"
+          : config.extension === "sus"
+            ? "sus4"
+            : config.minor
+              ? "m"
+              : "";
+    return noteNames[config.root] + suffix;
+  }
   function renderProgression() {
     $("#chord-capture").setAttribute(
       "aria-pressed",
