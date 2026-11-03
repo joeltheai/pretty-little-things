@@ -1058,23 +1058,9 @@
     if (playing) restart();
   });
   function updateChord(audition = false, syncOnly = false) {
-    const extension = $("#extension").value;
-    chordNotes = buildChordNotes(chordConfig());
-    $("#chord-name").textContent =
-      noteNames[chordRoot] +
-      (extension === "seventh"
-        ? chordMinor
-          ? "m7"
-          : "maj7"
-        : extension === "ninth"
-          ? chordMinor
-            ? "madd9"
-            : "add9"
-          : extension === "sus"
-            ? "sus4"
-            : chordMinor
-              ? "m"
-              : "");
+    const config = chordConfig();
+    chordNotes = buildChordNotes(config);
+    $("#chord-name").textContent = chordName(config);
     $$("#wheel path[data-root]").forEach((p) => {
       const selected =
         Number(p.dataset.root) === chordRoot &&
@@ -1127,13 +1113,21 @@
   });
   ["voicing", "extension"].forEach((id) =>
     $(`#${id}`).addEventListener("change", () => {
-      if (progression.enabled) {
-        progression.enabled = false;
-        progression.index = -1;
-        updateChord(false, true);
-        renderProgression();
-        if (playing) restart();
-      } else updateChord();
+      const extension = $("#extension").value;
+      const inversion = Number($("#voicing").value);
+      // The mode is global: keep captured progression chords in sync so the
+      // loop keeps running and replays with the current selection.
+      progression.chords.forEach((entry) => {
+        entry.extension = extension;
+        entry.inversion = inversion;
+        entry.notes = buildChordNotes(entry);
+        entry.label = chordName(entry);
+      });
+      updateChord(false, true);
+      renderProgression();
+      if (!playing) return;
+      if (retrigger) restart();
+      else if (bypass && !progression.enabled) holdChord();
     }),
   );
   async function auditionChord() {
