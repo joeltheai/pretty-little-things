@@ -981,11 +981,15 @@ svg {
 .synth-bottom .knob output {
   top: 9px;
 }
-.export-button {
+.patch-actions {
   position: fixed;
   bottom: 10px;
   left: 14px;
   z-index: 3;
+  display: flex;
+}
+.import-button,
+.export-button {
   display: grid;
   place-items: center;
   width: 44px;
@@ -994,6 +998,7 @@ svg {
   border: 0;
   color: #777;
 }
+.import-button svg,
 .export-button svg {
   width: 20px;
   height: 20px;
@@ -1002,6 +1007,21 @@ svg {
   stroke-width: 1.1;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+.patch-status {
+  position: fixed;
+  bottom: 64px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9;
+  max-width: calc(100% - 24px);
+  margin: 0;
+  padding: 8px 12px;
+  border: 1px solid #444;
+  background: #080808;
+  color: #ddd;
+  font-size: 10px;
+  line-height: 1.5;
 }
 .motion-button {
   position: fixed;
@@ -1100,6 +1120,7 @@ svg {
     position: fixed;
     top: auto;
     bottom: calc(62px + env(safe-area-inset-bottom, 0px));
+    left: calc(50% + 22px);
     gap: 12px;
   }
   .transport button {
@@ -1114,6 +1135,7 @@ svg {
     width: 26px;
   }
   .transport,
+  .import-button,
   .export-button,
   .motion-button,
   .carousel-navigation {
@@ -1122,9 +1144,12 @@ svg {
   .transport svg {
     filter: drop-shadow(0 1px 2px #000);
   }
-  .export-button {
+  .patch-actions {
     left: max(12px, env(safe-area-inset-left, 0px));
     bottom: calc(62px + env(safe-area-inset-bottom, 0px));
+  }
+  .patch-status {
+    bottom: calc(116px + env(safe-area-inset-bottom, 0px));
   }
   .motion-button {
     right: max(12px, env(safe-area-inset-right, 0px));
@@ -1341,6 +1366,11 @@ svg {
   .audio-error {
     bottom: calc(116px + env(safe-area-inset-bottom, 0px));
     max-width: calc(100% - 40px);
+  }
+}
+@media (max-width: 360px) {
+  .transport input {
+    width: 48px;
   }
 }
 @media (prefers-reduced-motion: reduce) {

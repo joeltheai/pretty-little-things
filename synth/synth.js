@@ -1762,6 +1762,158 @@
   }
   $("#export-patch").addEventListener("click", exportPatch);
 
+  // Validate the whole file before changing controls or interrupting playback.
+  function validatePatch(file) {
+    const object = (value) => {
+      if (!value || typeof value !== "object" || Array.isArray(value))
+        throw new Error("Choose a JSON patch exported by this synth.");
+      return value;
+    };
+    const number = (value, min, max, name, integer = false) => {
+      if (
+        !Number.isFinite(value) || value < min || value > max ||
+        (integer && !Number.isInteger(value))
+      ) throw new Error(`Invalid patch setting: ${name}.`);
+      return value;
+    };
+    const boolean = (value) => {
+      if (typeof value !== "boolean")
+        throw new Error("The patch contains an invalid toggle setting.");
+      return value;
+    };
+    const choice = (value, choices, name) => {
+      if (!choices.includes(value))
+        throw new Error(`Invalid patch setting: ${name}.`);
+      return value;
+    };
+    const options = (selector) => $$(selector + " option").map((o) => o.value);
+    object(file);
+    if (file.version !== 1) throw new Error("Unsupported synth patch version.");
+    const synth = object(file.synth), transport = object(file.transport);
+    const arp = object(file.arp), savedLanes = object(arp.lanes);
+    const sequence = object(file.progression);
+    const readChord = (entry) => {
+      object(entry);
+      return {
+        root: number(entry.root, 0, 11, "chord root", true),
+        minor: boolean(entry.minor),
+        extension: choice(entry.extension, options("#extension"), "extension"),
+        inversion: number(entry.inversion, 0, 2, "inversion", true),
+      };
+    };
+    if (!Array.isArray(sequence.chords) || sequence.chords.length > 4)
+      throw new Error("A progression can contain up to four chords.");
+    const enabled = boolean(sequence.enabled);
+    if (enabled && sequence.chords.length !== 4)
+      throw new Error("A looping progression needs four chords.");
+    return {
+      synth: {
+        wave: choice(synth.wave, ["sawtooth", "sine", "triangle", "square"], "waveform"),
+        ...Object.fromEntries(Object.entries(definitions).map(([id, [min, max]]) =>
+          [id, number(synth[id], min, max, id, id === "voices")],
+        )),
+      },
+      transport: {
+        bpm: number(transport.bpm, 40, 240, "tempo", true),
+        rate: choice(transport.rate, options("#rate").map(Number), "rate"),
+        swing: number(transport.swing, 0, 0.6, "swing"),
+      },
+      chord: readChord(file.chord),
+      progression: { enabled, chords: sequence.chords.map(readChord) },
+      arp: {
+        pattern: choice(arp.pattern, [...options("#pattern"), "custom"], "pattern"),
+        selectedLane: choice(arp.selectedLane, laneSpecs.map((l) => l.id), "lane"),
+        linked: boolean(arp.linked),
+        retrigger: boolean(arp.retrigger),
+        bypass: boolean(arp.bypass),
+        lanes: Object.fromEntries(laneSpecs.map(({ id, min, max }) => {
+          const lane = object(savedLanes[id]);
+          if (
+            !Array.isArray(lane.values) || lane.values.length !== 16 ||
+            !Array.isArray(lane.mutes) || lane.mutes.length !== 16
+          ) throw new Error(`The ${id} lane needs 16 step values and mutes.`);
+          return [id, {
+            length: number(lane.length, 1, 16, `${id} length`, true),
+            division: number(lane.division, 1, 8, `${id} division`, true),
+            values: lane.values.map((v) => number(v, min, max, `${id} step`, true)),
+            mutes: lane.mutes.map(boolean),
+          }];
+        })),
+      },
+      motion: boolean(file.motion),
+    };
+  }
+  async function applyPatch(patch) {
+    const resume = playing || starting;
+    stop();
+    state.wave = patch.synth.wave;
+    $$(".waves button").forEach((button) =>
+      button.setAttribute("aria-pressed", String(button.dataset.wave === state.wave)),
+    );
+    Object.keys(definitions).forEach((id) => setControl(id, patch.synth[id]));
+    ({ bpm, rate, swing } = patch.transport);
+    Object.entries({ tempo: bpm, rate, swing }).forEach(([id, value]) => {
+      $(`#${id}`).value = String(value);
+    });
+    $("#tempo-out").textContent = bpm;
+    $("#swing").title = `Swing: ${Math.round(swing * 100)}%`;
+    chordRoot = patch.chord.root;
+    chordMinor = patch.chord.minor;
+    $("#extension").value = patch.chord.extension;
+    $("#voicing").value = String(patch.chord.inversion);
+    progression.chords = patch.progression.chords.map((entry) => ({
+      ...entry,
+      notes: buildChordNotes(entry),
+      label: chordName(entry),
+    }));
+    progression.enabled = patch.progression.enabled;
+    progression.capturing = false;
+    progression.index = -1;
+    ({ linked, retrigger, bypass } = patch.arp);
+    lanes.forEach((lane) => {
+      Object.assign(lane, patch.arp.lanes[lane.id]);
+      renderLane(lane);
+    });
+    selectLane(patch.arp.selectedLane);
+    if (patch.arp.pattern === "custom") markCustom();
+    else $("#pattern").value = patch.arp.pattern;
+    [["link-lengths", linked], ["retrigger", retrigger], ["arp-bypass", bypass]]
+      .forEach(([id, value]) => $(`#${id}`).setAttribute("aria-pressed", String(value)));
+    $("#arp-panel").classList.toggle("bypassed", bypass);
+    updateChord(false, true);
+    renderProgression();
+    setMotion(patch.motion);
+    if (resume) await start();
+  }
+  let patchStatusTimer;
+  function showPatchStatus(message, error = false) {
+    clearTimeout(patchStatusTimer);
+    const status = $("#patch-status");
+    status.setAttribute("role", error ? "alert" : "status");
+    status.textContent = message;
+    status.hidden = false;
+    patchStatusTimer = setTimeout(() => { status.hidden = true; }, 6000);
+  }
+  $("#import-patch").addEventListener("click", () => {
+    $("#import-file").value = "";
+    $("#import-file").click();
+  });
+  $("#import-file").addEventListener("change", async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    try {
+      if (file.size > 1024 * 1024) throw new Error("This file is too large to be a synth patch.");
+      let data;
+      try { data = JSON.parse(await file.text()); }
+      catch { throw new Error("Could not read this patch. Choose a valid JSON file."); }
+      const patch = validatePatch(data);
+      await applyPatch(patch);
+      showPatchStatus("Patch loaded.");
+    } catch (error) {
+      showPatchStatus(error.message, true);
+    }
+  });
+
   // One instrument per page on mobile; the garden remains a full-screen backdrop.
   const mobileLayout = matchMedia("(max-width: 1030px)");
   const workspace = $(".workspace");
