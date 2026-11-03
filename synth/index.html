@@ -2,10 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1, viewport-fit=cover"
-    />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#000000" />
     <title>synth</title>
     <link rel="icon" href="favicon.svg" />
@@ -45,438 +42,428 @@
       />
       <output id="tempo-out" for="tempo" title="BPM">112</output>
     </div>
-    <nav class="mobile-navigation" aria-label="Instruments and garden">
-      <button
-        type="button"
-        data-panel="chord-panel"
-        aria-controls="chord-panel"
-        aria-pressed="true"
-      >chords</button>
-      <button
-        type="button"
-        data-panel="arp-panel"
-        aria-controls="arp-panel"
-        aria-pressed="false"
-      >arp</button>
-      <button
-        type="button"
-        data-panel="synth-panel"
-        aria-controls="synth-panel"
-        aria-pressed="false"
-      >synth</button>
-      <button
-        type="button"
-        id="garden-view"
-        aria-controls="workspace"
-        aria-pressed="false"
-      >garden ↗</button>
-    </nav>
-    <p class="mobile-hint" id="carousel-hint">
-      swipe between instruments · tap garden for the full view
-    </p>
-    <main class="workspace" id="workspace" aria-label="Synth instruments">
-      <section class="panel chord-panel" id="chord-panel" aria-label="Chords">
-        <button
-          class="panel-handle"
-          type="button"
-          aria-label="Move chords card"
-          title="Drag to move; arrow keys when focused"
-        ></button>
-        <span class="port out" data-port="chord-out" title="Chord output"
-          ><i></i
-        ></span>
-        <div class="panel-content">
-          <h2 class="mobile-panel-title">chords <span>01 / 03</span></h2>
-          <div class="wheel-wrap">
-            <svg
-              id="wheel"
-              viewBox="0 0 320 320"
-              aria-label="Choose a chord"
-            ></svg
-            ><button
-              class="chord-center"
-              id="audition"
-              type="button"
-              title="Audition chord"
-              aria-label="Audition selected chord"
-            >
-              <strong id="chord-name">C</strong>
-            </button>
-          </div>
-          <div
-            class="chord-sequence"
-            role="group"
-            aria-label="Four-chord progression"
-          >
-            <button
-              id="chord-capture"
-              class="icon-button"
-              type="button"
-              aria-label="Capture four chords"
-              aria-pressed="false"
-              title="Capture four chords: click four wheel segments"
-            >
-              <svg viewBox="0 0 16 16" aria-hidden="true">
-                <circle cx="8" cy="8" r="3.5" />
-              </svg>
-            </button>
-            <div
-              id="chord-slots"
-              class="chord-slots"
-              role="list"
-              aria-label="Four bars in 4/4"
-            >
-              <span data-slot="0" role="listitem">1</span
-              ><span data-slot="1" role="listitem">2</span
-              ><span data-slot="2" role="listitem">3</span
-              ><span data-slot="3" role="listitem">4</span>
+    <main class="workspace" aria-label="Synth instruments">
+      <div class="instrument-view" data-view="0">
+        <section class="panel chord-panel" id="chord-panel" aria-label="Chords">
+          <button
+            class="panel-handle"
+            type="button"
+            aria-label="Move chords card"
+            title="Drag to move; arrow keys when focused"
+          ></button>
+          <span class="port out" data-port="chord-out" title="Chord output"
+            ><i></i
+          ></span>
+          <div class="panel-content">
+            <div class="wheel-wrap">
+              <svg
+                id="wheel"
+                viewBox="0 0 320 320"
+                aria-label="Choose a chord"
+              ></svg
+              ><button
+                class="chord-center"
+                id="audition"
+                type="button"
+                title="Audition chord"
+                aria-label="Audition selected chord"
+              >
+                <strong id="chord-name">C</strong>
+              </button>
             </div>
-            <button
-              id="chord-loop"
-              class="icon-button"
-              type="button"
-              aria-label="Loop four chords"
-              aria-pressed="false"
-              title="Loop four chords, one per 4/4 bar"
-              disabled
+            <div
+              class="chord-sequence"
+              role="group"
+              aria-label="Four-chord progression"
             >
-              ↻
-            </button>
-            <button
-              id="chord-clear"
-              class="icon-button"
-              type="button"
-              aria-label="Clear chord progression"
-              title="Clear chord progression"
-              disabled
-            >
-              ×
-            </button>
-          </div>
-          <div class="chord-options">
-            <select
-              id="extension"
-              aria-label="Chord extension"
-              title="Chord extension"
-            >
-              <option value="triad">triad</option>
-              <option value="seventh">7th</option>
-              <option value="ninth">add9</option>
-              <option value="sus">sus4</option></select
-            ><select
-              id="voicing"
-              aria-label="Chord inversion"
-              title="Chord inversion"
-            >
-              <option value="0">root</option>
-              <option value="1">inv 1</option>
-              <option value="2">inv 2</option>
-            </select>
-          </div>
-        </div>
-      </section>
-      <section class="panel arp-panel" id="arp-panel" aria-label="Arpeggiator">
-        <button
-          class="panel-handle"
-          type="button"
-          aria-label="Move arpeggiator card"
-          title="Drag to move; arrow keys when focused"
-        ></button>
-        <span class="port in" data-port="arp-in" title="Chord input"
-          ><i></i></span
-        ><span class="port out" data-port="arp-out" title="Arpeggiator output"
-          ><i></i
-        ></span>
-        <div class="panel-content">
-          <h2 class="mobile-panel-title">arpeggiator <span>02 / 03</span></h2>
-          <div class="arp-toolbar">
-            <select
-              id="pattern"
-              aria-label="Arpeggiator pattern"
-              title="Pattern"
-            >
-              <option value="bloom">up / down</option>
-              <option value="up">up</option>
-              <option value="down">down</option>
-              <option value="drift">5 / 8</option>
-              <option value="rain">random</option>
-            </select>
-            <select id="rate" aria-label="Arpeggiator rate" title="Rate">
-              <option value="1">1/4</option>
-              <option value="0.5" selected>1/8</option>
-              <option value="0.25">1/16</option>
-              <option value="0.3333333333">1/8T</option>
-            </select>
-            <button
-              id="randomize"
-              class="icon-button"
-              type="button"
-              title="Randomize current lane"
-              aria-label="Randomize current lane"
-            >
-              ⤨
-            </button>
-            <button
-              id="arp-bypass"
-              class="icon-button"
-              type="button"
-              title="Bypass arpeggiator"
-              aria-label="Bypass arpeggiator"
-              aria-pressed="false"
-            >
-              ⏻
-            </button>
-          </div>
-          <div
-            id="lane-tabs"
-            class="lane-tabs"
-            role="tablist"
-            aria-label="Arpeggiator lanes"
-          ></div>
-          <div id="lanes" class="lanes"></div>
-          <div class="lane-controls">
-            <label for="lane-length">len</label
-            ><input
-              id="lane-length"
-              type="range"
-              min="1"
-              max="16"
-              value="8"
-              aria-label="Note lane length"
-            /><output id="lane-length-out" for="lane-length">8</output>
-            <select
-              id="lane-division"
-              aria-label="Note clock division"
-              title="Current lane clock division"
-            >
-              <option value="1">÷1</option>
-              <option value="2">÷2</option>
-              <option value="3">÷3</option>
-              <option value="4">÷4</option>
-              <option value="5">÷5</option>
-              <option value="6">÷6</option>
-              <option value="7">÷7</option>
-              <option value="8">÷8</option>
-            </select>
-            <button
-              class="icon-button"
-              id="link-lengths"
-              type="button"
-              aria-label="Link lane lengths"
-              aria-pressed="false"
-              title="Link lane lengths"
-            >
-              ⇄
-            </button>
-            <button
-              class="icon-button"
-              id="retrigger"
-              type="button"
-              aria-label="Retrigger on chord"
-              aria-pressed="false"
-              title="Retrigger: restart at step 1 on each chord"
-            >
-              ↺
-            </button>
-            <label class="swing-control" for="swing"
-              >swing<input
-                id="swing"
-                type="range"
-                min="0"
-                max="0.6"
-                step="0.01"
-                value="0"
-                aria-label="Swing"
-            /></label>
-          </div>
-        </div>
-      </section>
-      <section
-        class="panel synth-panel"
-        id="synth-panel"
-        aria-label="Synthesizer"
-      >
-        <button
-          class="panel-handle"
-          type="button"
-          aria-label="Move synthesizer card"
-          title="Drag to move; arrow keys when focused"
-        ></button>
-        <span class="port in" data-port="synth-in" title="Note input"
-          ><i></i
-        ></span>
-        <div class="panel-content">
-          <h2 class="mobile-panel-title">synthesizer <span>03 / 03</span></h2>
-          <div class="wave-display">
-            <svg
-              id="wave-display"
-              viewBox="0 0 400 112"
-              aria-label="Oscillator waveform"
-            >
-              <defs>
-                <linearGradient id="wave-fill" x1="0" x2="0" y1="0" y2="1">
-                  <stop offset="0" stop-color="white" stop-opacity=".18" />
-                  <stop offset="1" stop-color="white" stop-opacity="0" />
-                </linearGradient>
-              </defs>
-              <g id="wave-grid"></g>
-              <g id="wave-stack"></g>
-              <path id="wave-area" fill="url(#wave-fill)" />
-              <path id="wave-line" class="graph-line" />
-            </svg>
-          </div>
-          <div class="waves" role="group" aria-label="Oscillator waveform">
-            <button
-              data-wave="sawtooth"
-              aria-pressed="true"
-              aria-label="Sawtooth"
-              title="Sawtooth"
-              type="button"
-            >
-              <svg viewBox="0 0 30 16" aria-hidden="true">
-                <path d="M2 13L10 3V13L18 3V13L26 3" />
-              </svg>
-            </button>
-            <button
-              data-wave="sine"
-              aria-pressed="false"
-              aria-label="Sine"
-              title="Sine"
-              type="button"
-            >
-              <svg viewBox="0 0 30 16" aria-hidden="true">
-                <path d="M2 8Q8 -3 14 8T26 8" />
-              </svg>
-            </button>
-            <button
-              data-wave="triangle"
-              aria-pressed="false"
-              aria-label="Triangle"
-              title="Triangle"
-              type="button"
-            >
-              <svg viewBox="0 0 30 16" aria-hidden="true">
-                <path d="M2 13L8 3L14 13L20 3L26 13" />
-              </svg>
-            </button>
-            <button
-              data-wave="square"
-              aria-pressed="false"
-              aria-label="Square"
-              title="Square"
-              type="button"
-            >
-              <svg viewBox="0 0 30 16" aria-hidden="true">
-                <path d="M2 13V3H10V13H18V3H26" />
-              </svg>
-            </button>
-          </div>
-          <div class="osc-row">
-            <div class="unison-control">
-              <div class="vertical-control" id="voices-control">
-                <span class="vertical-track" aria-hidden="true"
-                  ><span class="vertical-thumb"></span
-                ></span>
-                <input
-                  id="voices"
-                  type="range"
-                  min="1"
-                  max="7"
-                  step="1"
-                  value="7"
-                  aria-label="Unison voices"
-                  aria-orientation="vertical"
-                  title="Voices"
-                />
-              </div>
-              <div id="unison-spread" class="unison-spread">
-                <svg
-                  id="unison-display"
-                  viewBox="0 0 200 44"
-                  preserveAspectRatio="none"
-                  role="img"
-                  aria-label="Unison voices"
-                >
-                  <path class="unison-guide" d="M100 5V32 M18 32H182" />
-                  <g id="unison-lines"></g>
+              <button
+                id="chord-capture"
+                class="icon-button"
+                type="button"
+                aria-label="Capture four chords"
+                aria-pressed="false"
+                title="Capture four chords: click four wheel segments"
+              >
+                <svg viewBox="0 0 16 16" aria-hidden="true">
+                  <circle cx="8" cy="8" r="3.5" />
                 </svg>
-                <output
-                  id="voices-out"
-                  class="unison-readout voice-readout"
-                  for="voices"
-                ></output>
-                <output
-                  id="detune-out"
-                  class="unison-readout detune-readout"
-                  for="detune"
-                ></output>
+              </button>
+              <div
+                id="chord-slots"
+                class="chord-slots"
+                role="list"
+                aria-label="Four bars in 4/4"
+              >
+                <span data-slot="0" role="listitem">1</span
+                ><span data-slot="1" role="listitem">2</span
+                ><span data-slot="2" role="listitem">3</span
+                ><span data-slot="3" role="listitem">4</span>
               </div>
-              <div class="vertical-control" id="detune-control">
-                <span class="vertical-track" aria-hidden="true"
-                  ><span class="vertical-thumb"></span
-                ></span>
-                <input
-                  id="detune"
+              <button
+                id="chord-loop"
+                class="icon-button"
+                type="button"
+                aria-label="Loop four chords"
+                aria-pressed="false"
+                title="Loop four chords, one per 4/4 bar"
+                disabled
+              >
+                ↻
+              </button>
+              <button
+                id="chord-clear"
+                class="icon-button"
+                type="button"
+                aria-label="Clear chord progression"
+                title="Clear chord progression"
+                disabled
+              >
+                ×
+              </button>
+            </div>
+            <div class="chord-options">
+              <select
+                id="extension"
+                aria-label="Chord extension"
+                title="Chord extension"
+              >
+                <option value="triad">triad</option>
+                <option value="seventh">7th</option>
+                <option value="ninth">add9</option>
+                <option value="sus">sus4</option></select
+              ><select
+                id="voicing"
+                aria-label="Chord inversion"
+                title="Chord inversion"
+              >
+                <option value="0">root</option>
+                <option value="1">inv 1</option>
+                <option value="2">inv 2</option>
+              </select>
+            </div>
+          </div>
+        </section>
+      </div>
+      <div class="instrument-view" data-view="1">
+        <section class="panel arp-panel" id="arp-panel" aria-label="Arpeggiator">
+          <button
+            class="panel-handle"
+            type="button"
+            aria-label="Move arpeggiator card"
+            title="Drag to move; arrow keys when focused"
+          ></button>
+          <span class="port in" data-port="arp-in" title="Chord input"
+            ><i></i></span
+          ><span class="port out" data-port="arp-out" title="Arpeggiator output"
+            ><i></i
+          ></span>
+          <div class="panel-content">
+            <div class="arp-toolbar">
+              <select
+                id="pattern"
+                aria-label="Arpeggiator pattern"
+                title="Pattern"
+              >
+                <option value="bloom">up / down</option>
+                <option value="up">up</option>
+                <option value="down">down</option>
+                <option value="drift">5 / 8</option>
+                <option value="rain">random</option>
+              </select>
+              <select id="rate" aria-label="Arpeggiator rate" title="Rate">
+                <option value="1">1/4</option>
+                <option value="0.5" selected>1/8</option>
+                <option value="0.25">1/16</option>
+                <option value="0.3333333333">1/8T</option>
+              </select>
+              <button
+                id="randomize"
+                class="icon-button"
+                type="button"
+                title="Randomize current lane"
+                aria-label="Randomize current lane"
+              >
+                ⤨
+              </button>
+              <button
+                id="arp-bypass"
+                class="icon-button"
+                type="button"
+                title="Bypass arpeggiator"
+                aria-label="Bypass arpeggiator"
+                aria-pressed="false"
+              >
+                ⏻
+              </button>
+            </div>
+            <div
+              id="lane-tabs"
+              class="lane-tabs"
+              role="tablist"
+              aria-label="Arpeggiator lanes"
+            ></div>
+            <div id="lanes" class="lanes"></div>
+            <div class="lane-controls">
+              <label for="lane-length">len</label
+              ><input
+                id="lane-length"
+                type="range"
+                min="1"
+                max="16"
+                value="8"
+                aria-label="Note lane length"
+              /><output id="lane-length-out" for="lane-length">8</output>
+              <select
+                id="lane-division"
+                aria-label="Note clock division"
+                title="Current lane clock division"
+              >
+                <option value="1">÷1</option>
+                <option value="2">÷2</option>
+                <option value="3">÷3</option>
+                <option value="4">÷4</option>
+                <option value="5">÷5</option>
+                <option value="6">÷6</option>
+                <option value="7">÷7</option>
+                <option value="8">÷8</option>
+              </select>
+              <button
+                class="icon-button"
+                id="link-lengths"
+                type="button"
+                aria-label="Link lane lengths"
+                aria-pressed="false"
+                title="Link lane lengths"
+              >
+                ⇄
+              </button>
+              <button
+                class="icon-button"
+                id="retrigger"
+                type="button"
+                aria-label="Retrigger on chord"
+                aria-pressed="false"
+                title="Retrigger: restart at step 1 on each chord"
+              >
+                ↺
+              </button>
+              <label class="swing-control" for="swing"
+                >swing<input
+                  id="swing"
                   type="range"
                   min="0"
-                  max="50"
-                  step="any"
-                  value="4"
-                  aria-label="Detune in cents"
-                  aria-orientation="vertical"
-                  title="Detune"
-                />
-              </div>
+                  max="0.6"
+                  step="0.01"
+                  value="0"
+                  aria-label="Swing"
+              /></label>
             </div>
-            <div class="knob-row" id="osc-controls"></div>
           </div>
-          <div class="envelope-module">
-            <svg
-              id="envelope"
-              viewBox="0 0 400 106"
-              aria-label="Amplitude envelope; drag the attack, decay, sustain and release points"
-            >
-              <defs>
-                <linearGradient id="env-fill" x1="0" x2="0" y1="0" y2="1">
-                  <stop offset="0" stop-color="white" stop-opacity=".16" />
-                  <stop offset="1" stop-color="white" stop-opacity=".01" />
-                </linearGradient>
-              </defs>
-              <g class="graph-grid">
-                <path
-                  d="M12 28H388 M12 51H388 M12 74H388 M12 96H388 M106 10V96 M200 10V96 M294 10V96"
-                />
-              </g>
-              <path id="env-area" fill="url(#env-fill)" />
-              <path id="env-line" class="graph-line" />
-              <g id="env-handles"></g>
-              <circle id="env-cursor" r="3" fill="white" opacity="0" />
-            </svg>
-            <div class="envelope-controls" id="env-controls"></div>
-          </div>
-          <div class="filter-row">
-            <div class="filter-visual">
+        </section>
+      </div>
+      <div class="instrument-view" data-view="2">
+        <section
+          class="panel synth-panel"
+          id="synth-panel"
+          aria-label="Synthesizer"
+        >
+          <button
+            class="panel-handle"
+            type="button"
+            aria-label="Move synthesizer card"
+            title="Drag to move; arrow keys when focused"
+          ></button>
+          <span class="port in" data-port="synth-in" title="Note input"
+            ><i></i
+          ></span>
+          <div class="panel-content">
+            <div class="wave-display">
               <svg
-                id="filter-display"
-                viewBox="0 0 180 65"
-                aria-label="Low pass filter frequency response"
+                id="wave-display"
+                viewBox="0 0 400 112"
+                aria-label="Oscillator waveform"
               >
-                <path
-                  class="filter-grid"
-                  d="M0 20H180 M0 45H180 M45 0V65 M90 0V65 M135 0V65"
-                />
-                <path id="filter-line" class="graph-line" />
+                <defs>
+                  <linearGradient id="wave-fill" x1="0" x2="0" y1="0" y2="1">
+                    <stop offset="0" stop-color="white" stop-opacity=".18" />
+                    <stop offset="1" stop-color="white" stop-opacity="0" />
+                  </linearGradient>
+                </defs>
+                <g id="wave-grid"></g>
+                <g id="wave-stack"></g>
+                <path id="wave-area" fill="url(#wave-fill)" />
+                <path id="wave-line" class="graph-line" />
               </svg>
             </div>
-            <div class="knob-row" id="filter-controls"></div>
+            <div class="waves" role="group" aria-label="Oscillator waveform">
+              <button
+                data-wave="sawtooth"
+                aria-pressed="true"
+                aria-label="Sawtooth"
+                title="Sawtooth"
+                type="button"
+              >
+                <svg viewBox="0 0 30 16" aria-hidden="true">
+                  <path d="M2 13L10 3V13L18 3V13L26 3" />
+                </svg>
+              </button>
+              <button
+                data-wave="sine"
+                aria-pressed="false"
+                aria-label="Sine"
+                title="Sine"
+                type="button"
+              >
+                <svg viewBox="0 0 30 16" aria-hidden="true">
+                  <path d="M2 8Q8 -3 14 8T26 8" />
+                </svg>
+              </button>
+              <button
+                data-wave="triangle"
+                aria-pressed="false"
+                aria-label="Triangle"
+                title="Triangle"
+                type="button"
+              >
+                <svg viewBox="0 0 30 16" aria-hidden="true">
+                  <path d="M2 13L8 3L14 13L20 3L26 13" />
+                </svg>
+              </button>
+              <button
+                data-wave="square"
+                aria-pressed="false"
+                aria-label="Square"
+                title="Square"
+                type="button"
+              >
+                <svg viewBox="0 0 30 16" aria-hidden="true">
+                  <path d="M2 13V3H10V13H18V3H26" />
+                </svg>
+              </button>
+            </div>
+            <div class="osc-row">
+              <div class="unison-control">
+                <div class="vertical-control" id="voices-control">
+                  <span class="vertical-track" aria-hidden="true"
+                    ><span class="vertical-thumb"></span
+                  ></span>
+                  <input
+                    id="voices"
+                    type="range"
+                    min="1"
+                    max="7"
+                    step="1"
+                    value="7"
+                    aria-label="Unison voices"
+                    aria-orientation="vertical"
+                    title="Voices"
+                  />
+                </div>
+                <div id="unison-spread" class="unison-spread">
+                  <svg
+                    id="unison-display"
+                    viewBox="0 0 200 44"
+                    preserveAspectRatio="none"
+                    role="img"
+                    aria-label="Unison voices"
+                  >
+                    <path class="unison-guide" d="M100 5V32 M18 32H182" />
+                    <g id="unison-lines"></g>
+                  </svg>
+                  <output
+                    id="voices-out"
+                    class="unison-readout voice-readout"
+                    for="voices"
+                  ></output>
+                  <output
+                    id="detune-out"
+                    class="unison-readout detune-readout"
+                    for="detune"
+                  ></output>
+                </div>
+                <div class="vertical-control" id="detune-control">
+                  <span class="vertical-track" aria-hidden="true"
+                    ><span class="vertical-thumb"></span
+                  ></span>
+                  <input
+                    id="detune"
+                    type="range"
+                    min="0"
+                    max="50"
+                    step="any"
+                    value="4"
+                    aria-label="Detune in cents"
+                    aria-orientation="vertical"
+                    title="Detune"
+                  />
+                </div>
+              </div>
+              <div class="knob-row" id="osc-controls"></div>
+            </div>
+            <div class="envelope-module">
+              <svg
+                id="envelope"
+                viewBox="0 0 400 106"
+                aria-label="Amplitude envelope; drag the attack, decay, sustain and release points"
+              >
+                <defs>
+                  <linearGradient id="env-fill" x1="0" x2="0" y1="0" y2="1">
+                    <stop offset="0" stop-color="white" stop-opacity=".16" />
+                    <stop offset="1" stop-color="white" stop-opacity=".01" />
+                  </linearGradient>
+                </defs>
+                <g class="graph-grid">
+                  <path
+                    d="M12 28H388 M12 51H388 M12 74H388 M12 96H388 M106 10V96 M200 10V96 M294 10V96"
+                  />
+                </g>
+                <path id="env-area" fill="url(#env-fill)" />
+                <path id="env-line" class="graph-line" />
+                <g id="env-handles"></g>
+                <circle id="env-cursor" r="3" fill="white" opacity="0" />
+              </svg>
+              <div class="envelope-controls" id="env-controls"></div>
+            </div>
+            <div class="filter-row">
+              <div class="filter-visual">
+                <svg
+                  id="filter-display"
+                  viewBox="0 0 180 65"
+                  aria-label="Low pass filter frequency response"
+                >
+                  <path
+                    class="filter-grid"
+                    d="M0 20H180 M0 45H180 M45 0V65 M90 0V65 M135 0V65"
+                  />
+                  <path id="filter-line" class="graph-line" />
+                </svg>
+              </div>
+              <div class="knob-row" id="filter-controls"></div>
+            </div>
+            <div class="synth-bottom">
+              <canvas id="scope" aria-label="Live audio output waveform"></canvas>
+              <div id="output-control"></div>
+            </div>
           </div>
-          <div class="synth-bottom">
-            <canvas id="scope" aria-label="Live audio output waveform"></canvas>
-            <div id="output-control"></div>
-          </div>
-        </div>
-      </section>
+        </section>
+      </div>
+      <div class="instrument-view envelope-view" data-view="3">
+        <section class="panel envelope-panel" aria-label="Amplitude envelope">
+          <div class="panel-content" id="mobile-envelope"></div>
+        </section>
+      </div>
     </main>
+    <nav class="carousel-navigation" aria-label="Instrument views">
+      <output id="view-name" aria-live="polite">chords</output>
+      <button id="previous-view" type="button" aria-label="Previous instrument" disabled>←</button>
+      <div class="carousel-dots">
+        <button type="button" data-view="0" aria-label="Chords" aria-current="page"></button>
+        <button type="button" data-view="1" aria-label="Arpeggiator"></button>
+        <button type="button" data-view="2" aria-label="Synthesizer"></button>
+        <button type="button" data-view="3" aria-label="ADSR envelope"></button>
+      </div>
+      <button id="next-view" type="button" aria-label="Next instrument">→</button>
+    </nav>
     <button
       id="motion"
       class="motion-button"

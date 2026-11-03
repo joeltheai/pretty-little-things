@@ -1006,226 +1006,230 @@ svg {
   padding: 10px;
   border: 1px solid #666;
 }
-.mobile-navigation,
-.mobile-hint,
-.mobile-panel-title {
+.instrument-view {
+  display: contents;
+}
+.envelope-view,
+.carousel-navigation {
   display: none;
 }
 @media (max-width: 1030px) {
-  html {
-    overscroll-behavior-y: none;
-    scroll-padding-top: calc(124px + env(safe-area-inset-top, 0px));
+  html,
+  body {
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
   }
   body {
-    display: flow-root;
-    min-height: 100svh;
+    height: 100svh;
+    height: 100dvh;
   }
-  .transport {
-    position: fixed;
-    top: calc(12px + env(safe-area-inset-top, 0px));
-    gap: 12px;
-    padding: 0 12px;
-    border: 1px solid #292929;
-    border-radius: 28px;
-    background: #080808ed;
-    z-index: 5;
-  }
-  .transport button {
-    width: 44px;
-    height: 44px;
-    padding: 12px;
-  }
-  .transport input {
-    width: clamp(90px, 28vw, 150px);
-  }
-  .transport output {
-    width: 28px;
-    font-size: 12px;
-  }
-  .mobile-navigation {
-    position: sticky;
-    top: calc(70px + env(safe-area-inset-top, 0px));
-    z-index: 4;
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    width: min(380px, calc(100% - 40px));
-    margin: calc(clamp(150px, 28svh, 240px) + env(safe-area-inset-top, 0px)) auto 0;
-    padding: 4px;
-    gap: 3px;
-    border: 1px solid #333;
-    border-radius: 8px;
-    background: #080808f5;
-  }
-  .mobile-navigation button {
-    min-height: 44px;
-    min-width: 0;
-    padding: 0 3px;
-    border-color: transparent;
-    font-size: 11px;
-    color: #999;
-  }
-  .mobile-navigation button[aria-pressed="true"] {
-    background: #dedede;
-    color: #080808;
-  }
-  .mobile-hint {
-    display: block;
-    position: relative;
-    z-index: 2;
-    margin: 12px 20px 0;
-    text-align: center;
-    color: #999;
-    font-size: 9px;
-    line-height: 1.5;
+  #garden,
+  #fireworks,
+  #rain-layer {
+    height: 100svh;
+    height: 100dvh;
   }
   .workspace {
-    display: grid;
-    grid-template-columns: none;
-    grid-auto-flow: column;
-    grid-auto-columns: 100%;
+    display: flex;
     justify-content: start;
-    align-items: start;
-    gap: 16px;
+    align-items: stretch;
+    gap: 0;
     min-height: 0;
-    height: calc(var(--panel-height, 650px) + 52px + env(safe-area-inset-bottom, 0px));
-    padding: 20px 20px calc(32px + env(safe-area-inset-bottom, 0px));
+    height: calc(100% - 116px - env(safe-area-inset-bottom, 0px));
+    padding: env(safe-area-inset-top, 0px) 0 0;
     overflow-x: auto;
     overflow-y: hidden;
     scroll-snap-type: x mandatory;
-    scroll-padding-inline: 20px;
+    overscroll-behavior-x: none;
     scrollbar-width: none;
-    /* Only the horizontal carousel is contained. The page can still scroll vertically. */
-    overscroll-behavior-x: contain;
   }
-  .workspace::-webkit-scrollbar {
+  .workspace::-webkit-scrollbar,
+  .instrument-view::-webkit-scrollbar {
     display: none;
   }
-  .panel {
-    width: 100%;
-    max-width: 380px;
-    margin: 0;
-    align-self: start;
-    justify-self: center;
-    scroll-snap-align: center;
+  .instrument-view {
+    display: flex;
+    flex: 0 0 100%;
+    min-width: 0;
+    padding: 18px 24px;
+    overflow-y: auto;
+    scroll-snap-align: start;
     scroll-snap-stop: always;
+    overscroll-behavior-y: none;
+    scrollbar-width: none;
+  }
+  .panel {
+    flex: none;
+    align-self: auto;
+    width: 100%;
+    max-width: 320px;
+    margin: auto;
   }
   .panel-content {
-    padding: 16px;
-  }
-  .mobile-panel-title {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin: 0 0 16px;
-    font-size: 12px;
-    font-weight: 400;
-    color: #ddd;
-  }
-  .mobile-panel-title span {
-    color: #777;
-    font-size: 10px;
+    padding: 12px;
   }
   .panel-handle,
   .port,
   .wires {
     display: none;
   }
+  .transport {
+    position: fixed;
+    top: auto;
+    bottom: calc(62px + env(safe-area-inset-bottom, 0px));
+    gap: 12px;
+  }
+  .transport button {
+    width: 44px;
+    height: 44px;
+  }
+  .transport input {
+    width: 90px;
+  }
+  .transport output {
+    font-size: 11px;
+    width: 26px;
+  }
+  .transport,
+  .motion-button,
+  .carousel-navigation {
+    text-shadow: 0 1px 4px #000;
+  }
+  .transport svg {
+    filter: drop-shadow(0 1px 2px #000);
+  }
+  .motion-button {
+    right: max(12px, env(safe-area-inset-right, 0px));
+    bottom: calc(62px + env(safe-area-inset-bottom, 0px));
+    width: 44px;
+    height: 44px;
+    font-size: 24px;
+  }
+  .carousel-navigation {
+    position: fixed;
+    bottom: max(4px, env(safe-area-inset-bottom, 0px));
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    z-index: 3;
+  }
+  .carousel-navigation output {
+    position: absolute;
+    bottom: 100%;
+    width: 100%;
+    text-align: center;
+    color: #aaa;
+    font-size: 9px;
+    pointer-events: none;
+  }
+  .carousel-navigation button {
+    width: 44px;
+    height: 44px;
+    border: 0;
+    padding: 0;
+    color: #aaa;
+    font-size: 16px;
+  }
+  .carousel-navigation button:disabled {
+    opacity: 0.25;
+    cursor: default;
+  }
+  .carousel-dots {
+    display: flex;
+  }
+  .carousel-dots button {
+    display: grid;
+    place-items: center;
+    width: 44px;
+  }
+  .carousel-dots button::after {
+    content: "";
+    width: 5px;
+    height: 5px;
+    border: 1px solid #777;
+    border-radius: 50%;
+  }
+  .carousel-dots button[aria-current]::after {
+    background: #ddd;
+    border-color: #ddd;
+  }
   .wheel-wrap {
-    max-width: 304px;
-    margin: 0 auto 16px;
+    max-width: 240px;
+    margin: 0 auto 12px;
   }
   .chord-sequence {
-    display: grid;
-    grid-template-columns: 44px minmax(0, 1fr) 44px 44px;
-    gap: 6px;
-    margin-bottom: 12px;
+    gap: 5px;
+    margin-bottom: 10px;
   }
   .chord-slots {
+    min-width: 0;
     gap: 3px;
   }
   .chord-slots span {
-    min-width: 0;
-    height: 36px;
-    font-size: 9px;
+    height: 28px;
   }
+  select,
   .chord-options select,
-  select {
-    min-height: 44px;
-    padding: 8px 6px;
-    /* Prevent iOS from zooming the page when opening a select. */
+  .lane-controls > #lane-division {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 44px;
     font-size: 16px;
+    padding: 4px 17px 4px 6px;
+    background: #030303 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'%3E%3Cpath d='m1 1 3 3 3-3' fill='none' stroke='%23888'/%3E%3C/svg%3E") no-repeat right 6px center;
   }
   .icon-button,
   .chord-sequence .icon-button,
   .lane-controls .icon-button {
     width: 44px;
     height: 44px;
-    font-size: 18px;
+    font-size: 16px;
   }
   .arp-toolbar {
-    gap: 6px;
-    margin-bottom: 12px;
+    gap: 5px;
+    margin-bottom: 6px;
   }
   .arp-toolbar > #pattern {
     min-width: 0;
     width: 0;
   }
   .arp-toolbar > #rate {
-    width: 70px;
+    width: 65px;
   }
   .lane-tab {
     min-height: 44px;
-    font-size: 12px;
+    font-size: 11px;
   }
   .lanes {
-    height: 190px;
-  }
-  .steps {
-    height: 132px;
-  }
-  .step {
-    height: 130px;
-  }
-  .step .step-value {
-    font-size: 10px;
-    top: calc(100% + 6px);
-  }
-  .lane[data-lane="octave"] .steps::after {
-    top: 66px;
+    height: 158px;
   }
   .step-mutes {
-    margin-top: 20px;
-    height: 38px;
+    height: 44px;
   }
   .mute-step {
-    height: 38px;
+    height: 44px;
   }
   .lane-controls {
     display: grid;
-    grid-template-columns: auto minmax(32px, 1fr) 16px auto 44px 44px;
-    gap: 5px;
+    grid-template-columns: auto minmax(32px, 1fr) 14px 54px 44px 44px;
+    gap: 4px;
     height: auto;
-    margin-top: 12px;
-    padding-top: 12px;
-    font-size: 11px;
+    font-size: 10px;
   }
   .lane-controls > #lane-length {
     width: 100%;
   }
   .lane-controls > #lane-division {
     width: 54px;
-    font-size: 16px;
-    padding: 4px;
-  }
-  .lane-controls output {
-    font-size: 11px;
   }
   .swing-control {
     grid-column: 1 / -1;
-    justify-content: space-between;
+    width: 100%;
     margin: 0;
-    gap: 16px;
-    font-size: 11px;
+    font-size: 10px;
   }
   .swing-control input {
     flex: 1;
@@ -1236,50 +1240,38 @@ svg {
     height: 44px;
   }
   input[type="range"]::-webkit-slider-thumb {
-    width: 20px;
-    height: 20px;
-    margin-top: -9.5px;
+    width: 14px;
+    height: 14px;
+    margin-top: -6.5px;
   }
   input[type="range"]::-moz-range-thumb {
-    width: 20px;
-    height: 20px;
+    width: 14px;
+    height: 14px;
   }
-  .waves {
-    gap: 8px;
-    margin: 12px 0;
+  #wave-display {
+    height: 60px;
   }
   .waves button {
     height: 44px;
   }
-  .osc-row {
-    gap: 12px;
-  }
+  .osc-row,
   .osc-row > .knob-row {
     gap: 8px;
   }
   .unison-control {
     grid-template-columns: 44px minmax(0, 1fr) 44px;
-    height: 70px;
+    height: 60px;
   }
   .vertical-thumb {
-    width: 16px;
-    height: 10px;
+    width: 10px;
+    height: 8px;
   }
   .unison-readout {
     opacity: 1;
-    font-size: 9px;
-    bottom: -13px;
-  }
-  .voice-readout {
-    left: -35px;
-  }
-  .detune-readout {
-    right: -35px;
   }
   .knob {
     min-width: 44px;
-    gap: 4px;
-    font-size: 10px;
+    font-size: 9px;
   }
   .knob-face,
   .synth-bottom .knob-face {
@@ -1290,63 +1282,38 @@ svg {
   .synth-bottom .knob output {
     position: static;
     opacity: 1;
-    font-size: 10px;
-    min-height: 12px;
+    font-size: 9px;
+    min-height: 11px;
   }
   .synth-bottom .knob {
-    gap: 4px;
-    font-size: 10px;
+    font-size: 9px;
   }
-  .envelope-module {
-    margin-top: 20px;
-    padding-top: 12px;
+  .envelope-panel .envelope-module {
+    border: 0;
+    padding: 0;
+    margin: 0;
   }
   #envelope {
-    height: 106px;
+    height: 120px;
   }
   #env-handles .env-hit {
-    r: 22px;
+    r: 20px;
   }
   .envelope-controls {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px 20px;
-    margin-top: 10px;
+    gap: 8px 16px;
+    margin-top: 14px;
   }
   .env-control {
-    font-size: 11px;
-    gap: 0;
+    font-size: 10px;
   }
   .env-control output {
     opacity: 1;
-    font-size: 10px;
-  }
-  .filter-row,
-  .synth-bottom {
-    margin-top: 12px;
-    padding-top: 12px;
-  }
-  .motion-button {
-    right: calc(8px + env(safe-area-inset-right, 0px));
-    top: calc(13px + env(safe-area-inset-top, 0px));
-    bottom: auto;
-    z-index: 5;
-    width: 44px;
-    height: 44px;
-    border: 1px solid #333;
-    border-radius: 50%;
-    background: #080808ed;
-    color: #bbb;
-    font-size: 26px;
-  }
-  .garden-view .workspace {
-    display: none;
-  }
-  .garden-view .mobile-hint {
-    visibility: hidden;
+    font-size: 9px;
   }
   .audio-error {
-    max-width: calc(100% - 80px);
-    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(116px + env(safe-area-inset-bottom, 0px));
+    max-width: calc(100% - 40px);
   }
 }
 @media (prefers-reduced-motion: reduce) {

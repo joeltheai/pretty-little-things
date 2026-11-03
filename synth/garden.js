@@ -159,18 +159,15 @@
         .sort((a, b) => b.depth - a.depth);
     }
 
-    resize(width, height, dpr, compact = false) {
+    resize(width, height, dpr) {
       const oldWidth = this.width,
         oldHeight = this.height;
       this.width = width;
       this.height = height;
-      this.focal = compact ? Math.min(height * 0.95, 420) : height * 0.95;
+      this.focal = height * 0.95;
       this.cameraDistance = 620;
       this.cameraHeight = (this.cameraDistance * 0.32) / 0.95;
-      // Keep the meadow in the open space above the mobile instrument carousel.
-      this.horizon = compact
-        ? clamp(height * 0.28, 150, 240) - 65
-        : height * 0.66;
+      this.horizon = height * 0.66;
       this.worldScale = clamp(width / 1000, 0.58, 1);
       const grassLimit = Math.min(this.grass.length, Math.ceil(width * 0.7));
       this.visibleGrass = Array.from(

@@ -1698,91 +1698,74 @@
     heldKeys.clear();
   });
 
-  // Native horizontal scrolling leaves vertical page scrolling available on touch.
+  // One instrument per page on mobile; the garden remains a full-screen backdrop.
   const mobileLayout = matchMedia("(max-width: 1030px)");
   const workspace = $(".workspace");
-  const panels = $$(".panel");
-  const panelButtons = $$(".mobile-navigation [data-panel]");
-  const gardenButton = $("#garden-view");
-  let selectedPanel = 0;
-  let gardenView = false;
-  function syncCarousel() {
+  const views = $$(".instrument-view");
+  const viewNames = ["chords", "arp", "synth", "adsr"];
+  const envelopeModule = $(".envelope-module");
+  let currentView = 0;
+  function syncView(index) {
+    currentView = clamp(index, 0, views.length - 1);
+    views.forEach((view, i) => {
+      view.inert = mobileLayout.matches && i !== currentView;
+    });
+    $$(".carousel-dots [data-view]").forEach((button, i) => {
+      if (i === currentView) button.setAttribute("aria-current", "page");
+      else button.removeAttribute("aria-current");
+    });
+    $("#previous-view").disabled = currentView === 0;
+    $("#next-view").disabled = currentView === views.length - 1;
+    $("#view-name").textContent = viewNames[currentView];
+  }
+  function configureLayout() {
     if (mobileLayout.matches) {
+      $("#mobile-envelope").append(envelopeModule);
       workspace.setAttribute("aria-roledescription", "carousel");
-      workspace.setAttribute("aria-describedby", "carousel-hint");
+      workspace.tabIndex = 0;
     } else {
-      workspace.removeAttribute("aria-roledescription");
-      workspace.removeAttribute("aria-describedby");
-    }
-    panels.forEach((panel, index) => {
-      panel.inert =
-        mobileLayout.matches && (gardenView || index !== selectedPanel);
-    });
-    panelButtons.forEach((button, index) => {
-      button.setAttribute(
-        "aria-pressed",
-        String(!gardenView && index === selectedPanel),
+      $(".synth-panel .panel-content").insertBefore(
+        envelopeModule,
+        $(".filter-row"),
       );
-    });
-    gardenButton.setAttribute("aria-pressed", String(gardenView));
-    workspace.style.setProperty(
-      "--panel-height",
-      `${panels[selectedPanel].offsetHeight}px`,
-    );
+      workspace.removeAttribute("aria-roledescription");
+      workspace.removeAttribute("tabindex");
+      if (currentView === 3) currentView = 2;
+    }
+    syncView(currentView);
   }
-  function scrollToPanel() {
-    if (!mobileLayout.matches) return;
+  function goToView(index) {
     workspace.scrollTo({
-      left: panels[selectedPanel].offsetLeft - panels[0].offsetLeft,
-      behavior: "instant",
+      left: clamp(index, 0, views.length - 1) * workspace.clientWidth,
+      behavior: motion ? "smooth" : "auto",
     });
   }
-  function showPanel(index) {
-    selectedPanel = index;
-    gardenView = false;
-    document.body.classList.remove("garden-view");
-    syncCarousel();
-    resize(false);
-    scrollToPanel();
-  }
-  panelButtons.forEach((button, index) => {
-    button.addEventListener("click", () => showPanel(index));
+  $$(".carousel-dots [data-view]").forEach((button) => {
+    button.addEventListener("click", () => goToView(Number(button.dataset.view)));
   });
-  gardenButton.addEventListener("click", () => {
-    if (gardenView) return showPanel(selectedPanel);
-    gardenView = true;
-    document.body.classList.add("garden-view");
-    syncCarousel();
-    window.scrollTo({ top: 0, behavior: "instant" });
-    resize();
-  });
-  let carouselFrame = 0;
+  $("#previous-view").addEventListener("click", () => goToView(currentView - 1));
+  $("#next-view").addEventListener("click", () => goToView(currentView + 1));
+  let viewFrame = 0;
   workspace.addEventListener(
     "scroll",
     () => {
-      if (!mobileLayout.matches || gardenView || carouselFrame) return;
-      carouselFrame = requestAnimationFrame(() => {
-        carouselFrame = 0;
-        let distance = Infinity;
-        panels.forEach((panel, index) => {
-          const next = Math.abs(
-            panel.offsetLeft - panels[0].offsetLeft - workspace.scrollLeft,
-          );
-          if (next < distance) {
-            distance = next;
-            selectedPanel = index;
-          }
-        });
-        syncCarousel();
+      if (!mobileLayout.matches || viewFrame) return;
+      viewFrame = requestAnimationFrame(() => {
+        viewFrame = 0;
+        syncView(Math.round(workspace.scrollLeft / workspace.clientWidth));
       });
     },
     { passive: true },
   );
+  workspace.addEventListener("keydown", (event) => {
+    if (!mobileLayout.matches || event.target !== workspace) return;
+    if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+      event.preventDefault();
+      goToView(currentView + (event.key === "ArrowLeft" ? -1 : 1));
+    }
+  });
   mobileLayout.addEventListener("change", () => {
-    gardenView = false;
-    document.body.classList.remove("garden-view");
-    syncCarousel();
-    scrollToPanel();
+    configureLayout();
     resize();
   });
 
@@ -1807,7 +1790,7 @@
       );
     });
   }
-  $$(".panel").forEach((panel) => {
+  $$(".panel:not(.envelope-panel)").forEach((panel) => {
     const bar = panel;
     const handle = panel.querySelector(".panel-handle");
     let drag;
@@ -1908,10 +1891,7 @@
     window.addEventListener("resize", placePanel);
   });
   window.addEventListener("scroll", updateWires, { passive: true });
-  const resizeObserver = new ResizeObserver(() => {
-    syncCarousel();
-    updateWires();
-  });
+  const resizeObserver = new ResizeObserver(updateWires);
   $$(".panel").forEach((p) => resizeObserver.observe(p));
 
   const canvas = $("#garden"),
@@ -1927,22 +1907,23 @@
   let scopeWidth = 0,
     scopeHeight = 0,
     lastFrame = 0;
-  function resize(alignCarousel = true) {
+  function resize() {
     const dpr = Math.min(devicePixelRatio || 1, 2);
-    gardenScene.resize(
-      innerWidth,
-      innerHeight,
-      dpr,
-      mobileLayout.matches && !gardenView,
-    );
+    const width = document.documentElement.clientWidth;
+    const height = document.body.getBoundingClientRect().height;
+    gardenScene.resize(width, mobileLayout.matches ? height : innerHeight, dpr);
+    if (mobileLayout.matches) {
+      workspace.scrollTo({
+        left: currentView * workspace.clientWidth,
+        behavior: "instant",
+      });
+    }
     const rect = scope.getBoundingClientRect();
     scopeWidth = rect.width;
     scopeHeight = rect.height;
     scope.width = Math.round(scopeWidth * dpr);
     scope.height = Math.round(scopeHeight * dpr);
     scopeCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    syncCarousel();
-    if (alignCarousel) scrollToPanel();
     updateWires();
   }
   function setMotion(value) {
@@ -2078,6 +2059,8 @@
   renderProgression();
   updateTransport();
   window.addEventListener("resize", resize);
+  window.visualViewport?.addEventListener("resize", resize);
+  configureLayout();
   resize();
   requestAnimationFrame(animate);
 })();
