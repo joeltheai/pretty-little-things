@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#050505" />
+    <title>grain</title>
+    <link rel="icon" href="favicon.svg" />
+    <link rel="stylesheet" href="grain.css" />
+  </head>
+  <body>
+    <canvas id="garden" aria-hidden="true"></canvas>
+
+    <main id="panel" class="panel" aria-label="Granular synthesizer">
+      <header class="panel-head" id="handle" title="Drag to move">
+        <svg class="mark" viewBox="0 0 20 20" aria-hidden="true">
+          <path d="M10 7C8.8 4 5.2 3.4 4 5.2S5 10 8.4 10M10 7c1.2-3 4.8-3.6 6-1.8S15 10 11.6 10M10 6v8" />
+        </svg>
+        <span class="name">grain</span>
+        <span class="kind">granular</span>
+        <div class="head-actions">
+          <button
+            id="auto"
+            class="chip"
+            type="button"
+            aria-pressed="true"
+            title="Generative drift notes"
+          >
+            drift
+          </button>
+          <button
+            id="freeze"
+            class="chip"
+            type="button"
+            aria-pressed="false"
+            title="Hold the read head still"
+          >
+            hold
+          </button>
+          <button
+            id="reverse"
+            class="chip"
+            type="button"
+            aria-pressed="false"
+            title="Reverse grain playback"
+          >
+            rev
+          </button>
+          <button
+            id="randomize"
+            class="chip icon-chip"
+            type="button"
+            aria-label="Randomize patch"
+            title="Randomize patch"
+          >
+            <svg viewBox="0 0 16 16" aria-hidden="true">
+              <path
+                d="M2 4h2.2l7 8H14M2 12h2.2l2-2.3M10 4h4M12 2l2 2-2 2M12 10l2 2-2 2"
+              />
+            </svg>
+          </button>
+          <button
+            id="power"
+            class="power"
+            type="button"
+            aria-label="Start audio"
+            aria-pressed="false"
+            title="Play / stop (Space)"
+          >
+            <svg viewBox="0 0 20 20" aria-hidden="true">
+              <path d="M10 2.6v6.8" />
+              <path d="M5.7 5.2a6.3 6.3 0 1 0 8.6 0" />
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <div class="panel-body">
+        <div class="source-row">
+          <span class="row-label">source</span>
+          <div
+            id="sources"
+            class="sources"
+            role="group"
+            aria-label="Sample source"
+          ></div>
+          <button
+            id="load"
+            class="load-button"
+            type="button"
+            aria-label="Load an audio sample"
+            title="Load an audio sample"
+          >
+            <svg viewBox="0 0 16 16" aria-hidden="true">
+              <path d="M8 11V3M5 6l3-3 3 3M3 13h10" />
+            </svg>
+          </button>
+          <input id="file" type="file" accept="audio/*" hidden />
+        </div>
+
+        <div class="cloud-wrap">
+          <canvas
+            id="cloud"
+            aria-label="Grain cloud across the sample"
+          ></canvas>
+          <span class="cloud-tag">read</span>
+        </div>
+
+        <div id="knobs" class="knob-grid"></div>
+
+        <div class="env-row">
+          <span class="row-label">env</span>
+          <div id="env-knobs" class="env-knobs"></div>
+        </div>
+
+        <button
+          id="more"
+          class="more-toggle"
+          type="button"
+          aria-expanded="true"
+          aria-controls="advanced"
+        >
+          <span>less</span><span class="chevron" aria-hidden="true">⌄</span>
+        </button>
+
+        <div
+          id="advanced"
+          class="advanced"
+          role="group"
+          aria-label="Advanced controls"
+        >
+          <div class="option-row">
+            <span class="row-label">grain</span>
+            <label class="mini-field"
+              >shape
+              <select id="shape" aria-label="Grain shape">
+                <option value="soft">soft</option>
+                <option value="perc">perc</option>
+                <option value="swell">swell</option>
+                <option value="tri">tri</option>
+                <option value="gate">gate</option>
+                <option value="sine">sine</option>
+                <option value="sine2">sine²</option>
+                <option value="rampUp">ramp↑</option>
+                <option value="rampDown">ramp↓</option>
+                <option value="rect">rect</option>
+              </select>
+            </label>
+            <label class="mini-field"
+              >dir
+              <select id="direction" aria-label="Grain direction">
+                <option value="forward">fwd</option>
+                <option value="reverse">rev</option>
+                <option value="random">rnd</option>
+                <option value="playDir">play dir</option>
+                <option value="playDirInv">inv dir</option>
+              </select>
+            </label>
+            <label class="mini-field"
+              >scale
+              <select id="scale" aria-label="Grain pitch scale">
+                <option value="off">off</option>
+                <option value="minor">minor</option>
+                <option value="major">major</option>
+                <option value="dorian">dorian</option>
+                <option value="chromatic">chrom</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="mod-row">
+            <span class="row-label">motion</span>
+            <select
+              id="lfo-target"
+              class="target-select"
+              aria-label="Motion target"
+              title="Motion target"
+            >
+              <option value="position">position</option>
+              <option value="pitch">pitch</option>
+              <option value="tone">tone</option>
+              <option value="width">width</option>
+              <option value="space">space</option>
+            </select>
+            <div id="lfo-knobs" class="mod-knobs"></div>
+          </div>
+
+          <div class="tone-row">
+            <span class="row-label">tone</span>
+            <select
+              id="filter-type"
+              class="target-select"
+              aria-label="Filter type"
+              title="Filter type"
+            >
+              <option value="lowpass">LP</option>
+              <option value="highpass">HP</option>
+              <option value="bandpass">BP</option>
+            </select>
+            <div id="filter-knobs" class="tone-knobs"></div>
+          </div>
+        </div>
+
+        <div class="footer">
+          <div class="scope-wrap">
+            <span class="row-label">out</span>
+            <canvas id="scope" aria-label="Live audio output"></canvas>
+          </div>
+          <div id="level-knob" class="level-holder"></div>
+        </div>
+
+        <div class="keys-row">
+          <div class="octave">
+            <span id="oct-label" class="octave-label">oct 4</span>
+            <div class="octave-buttons">
+              <button id="oct-down" type="button" aria-label="Octave down">
+                −
+              </button>
+              <button id="oct-up" type="button" aria-label="Octave up">
+                +
+              </button>
+            </div>
+          </div>
+          <div
+            id="keys"
+            class="keys"
+            role="group"
+            aria-label="Keyboard"
+            aria-describedby="key-hint"
+          ></div>
+        </div>
+      </div>
+    </main>
+
+    <div class="hint" id="key-hint">
+      <span>click the garden to play</span>
+      <span class="keys-hint"
+        >A W S E D F T G Y H U J K &nbsp;·&nbsp; Z / X octave &nbsp;·&nbsp;
+        space play</span
+      >
+    </div>
+
+    <button
+      id="motion"
+      class="motion"
+      type="button"
+      aria-label="Toggle animation"
+      aria-pressed="true"
+      title="Toggle animation"
+    >
+      ◌
+    </button>
+
+    <p id="error" class="error" role="alert" hidden></p>
+
+    <script src="audio.js"></script>
+    <script src="garden.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
