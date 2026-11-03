@@ -23,15 +23,15 @@
     synth: {
       wave: "sawtooth",
       voices: 7,
-      detune: 4,
+      detune: 4.45400417088422,
       morph: 20,
-      sub: 12,
+      sub: 50,
       attack: 0.005,
       decay: 0.24,
       sustain: 0.08,
-      release: 0.42,
-      tone: 69,
-      resonance: 12,
+      release: 0.34,
+      tone: 72,
+      resonance: 0,
       level: 55,
     },
     transport: {
@@ -40,22 +40,31 @@
       swing: 0,
     },
     chord: {
-      root: 0,
+      root: 6,
       minor: false,
-      extension: "ninth",
+      extension: "seventh",
       inversion: 0,
+    },
+    progression: {
+      enabled: true,
+      chords: [
+        { root: 3, minor: true },
+        { root: 1, minor: false },
+        { root: 5, minor: true },
+        { root: 6, minor: false },
+      ],
     },
     arp: {
       pattern: "custom",
       selectedLane: "note",
       linked: true,
-      retrigger: false,
+      retrigger: true,
       bypass: false,
       lanes: {
         note: {
-          length: 8,
+          length: 5,
           division: 1,
-          values: [1, 2, 3, 5, 4, 3, 2, 4, 1, 2, 3, 5, 4, 3, 2, 4],
+          values: [1, 2, 4, 3, 5, 3, 2, 4, 1, 2, 3, 5, 4, 3, 2, 4],
           mutes: [
             false,
             false,
@@ -76,7 +85,7 @@
           ],
         },
         gate: {
-          length: 8,
+          length: 5,
           division: 1,
           values: [
             72, 36, 90, 52, 64, 72, 36, 90, 52, 64, 72, 36, 90, 52, 64, 72,
@@ -101,7 +110,7 @@
           ],
         },
         velocity: {
-          length: 8,
+          length: 5,
           division: 1,
           values: [
             90, 50, 68, 44, 78, 55, 65, 90, 50, 68, 44, 78, 55, 65, 90, 50,
@@ -126,7 +135,7 @@
           ],
         },
         octave: {
-          length: 8,
+          length: 5,
           division: 1,
           values: [0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0],
           mutes: [
@@ -210,9 +219,16 @@
   let gardenScene = null,
     lastFireworkBar = -1;
   const progression = {
-    chords: [],
+    chords: INITIAL_STATE.progression.chords.map((chord) => {
+      const config = { ...INITIAL_STATE.chord, ...chord };
+      return {
+        ...config,
+        notes: buildChordNotes(config),
+        label: chordName(config),
+      };
+    }),
     capturing: false,
-    enabled: false,
+    enabled: INITIAL_STATE.progression.enabled,
     index: -1,
   };
   let nextChordBar = 0,
